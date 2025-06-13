@@ -1,42 +1,55 @@
-🐄 SmartMilk – Sistema de Monitoramento e Controle de Leite
-SmartMilk é um aplicativo desenvolvido para conectar produtores de leite aos coletores, oferecendo uma plataforma integrada de monitoramento, controle e rastreabilidade dos tanques unitários de leite.
+# 🐄 SMARTMILK – Sistema de Monitoramento e Controle de Leite
 
-📱 Sobre o Aplicativo
-O SmartMilk foi criado para facilitar o acompanhamento da produção e coleta de leite em tempo real, promovendo maior transparência, qualidade e eficiência em todo o processo.
+**SMARTMILK** é um aplicativo desenvolvido para conectar produtores de leite aos coletores, oferecendo uma plataforma integrada de **monitoramento, controle e rastreabilidade** dos tanques unitários de leite.
 
-👥 Usuários
-Produtores: acompanham o volume, temperatura, pH e histórico do leite armazenado em seus tanques.
+## 📱 Sobre o Aplicativo
 
-Coletores: visualizam rotas, dados dos tanques a serem coletados e registram coletas diretamente pelo app.
+O SMARTMILK foi criado para facilitar o acompanhamento da produção e coleta de leite em tempo real, promovendo maior transparência, qualidade e eficiência em todo o processo.
 
-🔧 Funcionalidades
-📊 Monitoramento dos tanques em tempo real (temperatura, volume, pH etc.)
+### 👥 Usuários
 
-🔒 Acesso individualizado para produtor e coletor
+- **Produtores**: acompanham o volume, temperatura, pH e histórico do leite armazenado em seus tanques.
+- **Coletores**: visualizam rotas, dados dos tanques a serem coletados e registram coletas diretamente pelo app.
 
-📅 Histórico de coletas e registros por tanque
+## 🔧 Funcionalidades
 
-🌐 Integração com sistema IoT para dados em tempo real
+- 📊 Monitoramento dos tanques em tempo real (temperatura, volume, pH etc.)
+- 🔒 Acesso individualizado para produtor e coletor
+- 📅 Histórico de coletas e registros por tanque
+- 🌐 Integração com sistema IoT para dados em tempo real
+- 🔔 Alertas sobre anomalias nos parâmetros do leite
+- 📍 Localização dos tanques vinculados ao usuário
 
-🔔 Alertas sobre anomalias nos parâmetros do leite
+## 🚀 Tecnologias Utilizadas
 
-🔔 Avisos da cooperativa vinculada ao produtor
+- **Flutter** – desenvolvimento do aplicativo mobile
+- **Node.js + MySQL** – backend e banco de dados
+- **MQTT (Paho)** – comunicação em tempo real com os dispositivos de coleta
+- **ESP32** – hardware para sensores nos tanques
 
-📍 Localização dos tanques vinculados ao usuário
+## 📦 Instalação e Uso
 
-🚀 Tecnologias Utilizadas
-Flutter – para o desenvolvimento do aplicativo mobile
+```bash
+# Clone o repositório
+git clone https://github.com/seu-usuario/smartmilk.git
 
-Python + MySQL – backend e banco de dados
+# Acesse o diretório do projeto
+cd smartmilk
 
-MQTT (Paho) – para comunicação em tempo real com os dispositivos de coleta
+# Instale as dependências do Flutter
+flutter pub get
 
-ESP32 – como hardware para sensores nos tanques
+# Execute o aplicativo
+flutter run
+```
+⚠️ Certifique-se de configurar corretamente o backend e o broker MQTT antes de executar.
 
 📚 Documentação
 A documentação detalhada do projeto está disponível na pasta /docs, com diagramas, estrutura do banco de dados e fluxos de tela.
 
 🤝 Contribuições
-Contribuições são bem-vindas! Caso queira sugerir melhorias ou corrigir bugs, abra uma issue ou envie um pull request.
+Contribuições são bem-vindas!
+Caso queira sugerir melhorias ou corrigir bugs, abra uma issue ou envie um pull request.
 
-Projeto desenvolvido por João Gabriel Marcelino e Carina Novais
+📫 Contato
+Projeto desenvolvido por Carina Pereira
