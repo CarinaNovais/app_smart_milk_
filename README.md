@@ -52,4 +52,4 @@ Contribuições são bem-vindas!
 Caso queira sugerir melhorias ou corrigir bugs, abra uma issue ou envie um pull request.
 
 📫 Contato
-Projeto desenvolvido por Carina Pereira
+Projeto desenvolvido por João Gabriel Marcelino e Carina Pereira
