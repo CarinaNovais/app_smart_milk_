@@ -23,7 +23,7 @@ O SMARTMILK foi criado para facilitar o acompanhamento da produção e coleta de
 ## 🚀 Tecnologias Utilizadas
 
 - **Flutter** – desenvolvimento do aplicativo mobile
-- **Node.js + MySQL** – backend e banco de dados
+- **Python + MySQL** – backend e banco de dados
 - **MQTT (Paho)** – comunicação em tempo real com os dispositivos de coleta
 - **ESP32** – hardware para sensores nos tanques
 
