@@ -1,15 +1,17 @@
+import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
+import 'package:app_smart_milk/pages/login_service.dart';
 import 'package:app_smart_milk/components/my_button.dart';
 import 'package:app_smart_milk/components/my_textField.dart';
 import 'package:app_smart_milk/components/quadrado_img.dart';
 import 'package:app_smart_milk/pages/cadastro_page.dart';
+//import 'dart:convert';
+//import 'package:mqtt_client/mqtt_client.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
-  final int idCargo;
-  const LoginPage({super.key, required this.idCargo});
+  final int cargo;
+  const LoginPage({super.key, required this.cargo});
 
   @override
   _LoginPageState createState() => _LoginPageState();
@@ -18,10 +20,45 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final usernameController = TextEditingController();
   final passwordController = TextEditingController();
+  String? _tokenRecebido;
 
   bool _isLoading = false;
+  bool loginValidadoNoBanco = false;
+  late MQTTService mqtt;
 
-  Future<void> enviarLogin() async {
+  @override
+  void initState() {
+    super.initState();
+    mqtt = MQTTService(
+      onLoginAceito: () async {
+        print('Callback onLoginAceito chamado');
+
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+
+        if (token != null) {
+          print('Token encontrado no callback: $token');
+          if (mounted) {
+            setState(() {
+              _tokenRecebido = token;
+            });
+            // 🔁 Faz o redirecionamento após login aceito
+            Navigator.pushReplacementNamed(context, '/homeProdutor');
+          }
+        } else {
+          print('⚠️ Token não encontrado no SharedPreferences');
+        }
+      },
+      onLoginNegado: (msg) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(msg)));
+      },
+    );
+    mqtt.inicializar();
+  }
+
+  Future<void> executarLogin() async {
     final nome = usernameController.text.trim();
     final senha = passwordController.text.trim();
 
@@ -34,45 +71,25 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    final uri = Uri.parse(
-      'http://192.168.66.15:5000/login',
-    ); // ajuste seu IP/porta
-    final body = jsonEncode({
-      "nome": nome,
-      "senha": senha,
-      "idCargo": widget.idCargo,
-    });
+    final resultado = await enviarLogin(
+      nome: nome,
+      senha: senha,
+      cargo: widget.cargo,
+    );
 
-    try {
-      final resposta = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: body,
-      );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(resultado.mensagem)));
 
-      final jsonResponse = jsonDecode(resposta.body);
+    setState(() => _isLoading = false);
 
-      if (resposta.statusCode == 200) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              jsonResponse["status"] ?? "Login publicado com sucesso!",
-            ),
-          ),
-        );
-        // Aqui você pode navegar para outra página, se quiser.
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(jsonResponse["erro"] ?? "Erro no login.")),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Erro ao conectar ao servidor.")),
-      );
-    } finally {
-      setState(() => _isLoading = false);
-    }
+    //ScaffoldMessenger.of(
+    //  context,
+    //).showSnackBar(SnackBar(content: Text(resultado.mensagem)));
+
+    //if (resultado.sucesso) {
+    // loginValidadoNoBanco = true;
+    // }
   }
 
   @override
@@ -107,7 +124,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const SizedBox(height: 10),
                 MyButton(
-                  onTap: _isLoading ? null : enviarLogin,
+                  onTap: _isLoading ? null : executarLogin,
                   text: _isLoading ? 'Carregando...' : 'Entrar',
                 ),
                 const SizedBox(height: 50),
@@ -148,6 +165,15 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 const SizedBox(height: 20),
+                if (_tokenRecebido != null)
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Text(
+                      'Token recebido:\n${_tokenRecebido!}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
+                    ),
+                  ),
               ],
             ),
           ),

@@ -1,6 +1,10 @@
 import 'package:app_smart_milk/components/home_grid.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_smart_milk/pages/mqtt_service.dart';
+
+late MQTTService mqtt;
 
 const Color appBlue = Color(0xFF0097B2);
 
@@ -12,6 +16,28 @@ class HomeProdutorPage extends StatefulWidget {
 }
 
 class _HomeProdutorPageState extends State<HomeProdutorPage> {
+  String nomeUsuario = '';
+
+  @override
+  void initState() {
+    super.initState();
+    carregarDadosUsuario();
+  }
+
+  Future<void> carregarDadosUsuario() async {
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      nomeUsuario = prefs.getString('nome') ?? 'Usuário';
+    });
+
+    if (nomeUsuario == 'Usuário') {
+      print('⚠️ Nenhum nome encontrado na sessão.');
+    } else {
+      print('✅ Nome do usuário carregado: $nomeUsuario');
+    }
+  }
+
   final List<GridItem> items = [
     GridItem(
       imagePath: 'lib/images/dadosCoperativa.png',
@@ -66,7 +92,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
-              accountName: const Text('Usuário'),
+              accountName: Text(nomeUsuario),
               accountEmail: const Text('Email'),
               currentAccountPicture: const CircleAvatar(
                 backgroundColor: Colors.white,
@@ -96,7 +122,10 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
             ListTile(
               leading: const Icon(Icons.logout),
               title: const Text('Sair'),
-              onTap: () => Navigator.of(context).pushReplacementNamed('/login'),
+              onTap: () async {
+                await mqtt.logout();
+                Navigator.pushReplacementNamed(context, '/login');
+              },
             ),
           ],
         ),

@@ -9,7 +9,7 @@ class IndexPage extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => LoginPage(idCargo: 0),
+        builder: (context) => LoginPage(cargo: 0),
       ), // identifica que é produtor
     );
   }
@@ -18,7 +18,7 @@ class IndexPage extends StatelessWidget {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => LoginPage(idCargo: 1),
+        builder: (context) => LoginPage(cargo: 1),
       ), // identifica que é coletor
     );
   }

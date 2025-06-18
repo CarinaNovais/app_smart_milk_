@@ -11,9 +11,10 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^0.13.6
-  shared_preferences: ^2.0.13
+  shared_preferences: ^2.2.0
   cupertino_icons: ^1.0.8
   mqtt_client: ^10.8.0
+ 
 
 dev_dependencies:
   flutter_test:
