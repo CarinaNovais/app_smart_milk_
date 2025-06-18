@@ -26,7 +26,9 @@ class HomeGrid extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Expanded(child: Image.network(item.imagePath, fit: BoxFit.cover)),
+              Expanded(
+                child: Image.asset(item.imagePath, fit: BoxFit.scaleDown),
+              ),
               const SizedBox(height: 4),
               Text(
                 item.legenda,
