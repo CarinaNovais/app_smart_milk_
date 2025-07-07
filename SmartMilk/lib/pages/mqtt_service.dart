@@ -6,8 +6,17 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 class MQTTService {
   final Function onLoginAceito;
   final Function(String) onLoginNegado;
+  final Function onCadastroAceito;
+  final Function(String) onCadastroNegado;
+  final Function(Map<String, dynamic>)? onDadosTanque;
 
-  MQTTService({required this.onLoginAceito, required this.onLoginNegado});
+  MQTTService({
+    required this.onLoginAceito,
+    required this.onLoginNegado,
+    required this.onCadastroAceito,
+    required this.onCadastroNegado,
+    this.onDadosTanque,
+  });
 
   late MqttClient client;
 
@@ -28,25 +37,14 @@ class MQTTService {
       print('📡 Inscrito no tópico: $topic');
     };
 
-    //client.updates!.listen(_onMessageReceived);
-
-    //  try {
-    //    await client.connect('csilab', 'WhoAmI#2023');
-    //    print('Conectou ao broker, inscrevendo no tópico...');
-    //   client.subscribe('login/resultado', MqttQos.atMostOnce);
-    //  } catch (e) {
-    //    print('Erro ao conectar no MQTT: $e');
-    //      client.disconnect();
-    //   }
-    // }
-
     try {
       final connectionStatus = await client.connect('csilab', 'WhoAmI#2023');
 
       if (connectionStatus != null &&
           connectionStatus.state == MqttConnectionState.connected) {
-        print('Conectado ao broker, inscrevendo no tópico...');
+        print('Conectado ao broker, inscrevendo nos tópicos...');
         client.subscribe('login/resultado', MqttQos.atMostOnce);
+        client.subscribe('cadastro/resultado', MqttQos.atMostOnce);
 
         client.updates?.listen(_onMessageReceived);
       } else {
@@ -60,33 +58,46 @@ class MQTTService {
   }
 
   void _onMessageReceived(List<MqttReceivedMessage<MqttMessage>> c) async {
-    // Pega a mensagem MQTT recebida
+    final topic = c[0].topic;
     final recMess = c[0].payload as MqttPublishMessage;
-    // Converte os bytes recebidos em texto
-    print('📥 Mensagem MQTT recebida!');
     final payload = MqttPublishPayload.bytesToStringAsString(
       recMess.payload.message,
     );
+    print('📥 Mensagem MQTT recebida no tópico "$topic"');
     print('💬 Conteúdo da mensagem: $payload');
 
     try {
-      // Tenta transformar o texto em um mapa/dicionário (JSON → Map)
       final dados = jsonDecode(payload);
 
-      // Verifica se o JSON tem a estrutura esperada
       if (dados is Map && dados['status'] != null) {
-        if (dados['status'] == 'aceito') {
-          print('🔄 Recebendo token: ${dados['token']}');
-          final prefs =
-              await SharedPreferences.getInstance(); // Salva os dados da sessão localmente
-          await prefs.setString('token', dados['token']);
-          await prefs.setString('expira_em', dados['expira_em']);
-          await prefs.setString('nome', dados['nome']);
-          print('✅ Token e dados do usuário salvos com sucesso.');
-          //
-          onLoginAceito();
-        } else {
-          onLoginNegado(dados['mensagem'] ?? 'Credenciais inválidas');
+        if (topic == 'login/resultado') {
+          if (dados['status'] == 'aceito') {
+            print('🔄 Recebendo token: ${dados['token']}');
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString('token', dados['token']);
+            await prefs.setString('expira_em', dados['expira_em']);
+            await prefs.setString('nome', dados['nome']);
+            print('✅ Token e dados do usuário salvos com sucesso.');
+            onLoginAceito();
+          } else {
+            onLoginNegado(dados['mensagem'] ?? 'Credenciais inválidas');
+          }
+        }
+        // 🔽 NOVO: Tratamento do resultado do cadastro
+        else if (topic == 'cadastro/resultado') {
+          if (dados['status'] == 'aceito') {
+            print('✅ Cadastro aceito!');
+            onCadastroAceito();
+          } else {
+            print('❌ Cadastro negado!');
+            onCadastroNegado(dados['mensagem'] ?? 'Erro ao cadastrar');
+          }
+        } else if (topic == 'tanque/resposta') {
+          if (dados['status'] == 'ok') {
+            onDadosTanque?.call(dados['dados']);
+          } else {
+            print('❌ Erro ao buscar dados do tanque: ${dados['mensagem']}');
+          }
         }
       } else {
         print('⚠️ Payload inesperado: $payload');
@@ -94,6 +105,27 @@ class MQTTService {
     } catch (e) {
       print('❌ Erro ao processar mensagem: $e');
     }
+  }
+
+  Future<void> buscarDadosTanque() async {
+    final prefs = await SharedPreferences.getInstance();
+    final nome = prefs.getString('nome');
+
+    if (nome == null) {
+      print('⚠️ Nome do usuário não encontrado no SharedPreferences');
+      return;
+    }
+
+    final msg = jsonEncode({"nome": nome});
+    final builder = MqttClientPayloadBuilder()..addString(msg);
+    client.publishMessage(
+      "tanque/buscar",
+      MqttQos.atMostOnce,
+      builder.payload!,
+    );
+    client.subscribe("tanque/resposta", MqttQos.atMostOnce);
+
+    print('📤 Mensagem enviada para "tanque/buscar": $msg');
   }
 
   Future<void> logout() async {
