@@ -1,12 +1,10 @@
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:flutter/material.dart';
-import 'package:app_smart_milk/pages/login_service.dart';
+import 'package:app_smart_milk/pages/envio_service.dart';
 import 'package:app_smart_milk/components/my_button.dart';
 import 'package:app_smart_milk/components/my_textField.dart';
 import 'package:app_smart_milk/components/quadrado_img.dart';
-import 'package:app_smart_milk/pages/cadastro_page.dart';
-//import 'dart:convert';
-//import 'package:mqtt_client/mqtt_client.dart';
+//import 'package:app_smart_milk/pages/cadastro_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
@@ -24,6 +22,7 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isLoading = false;
   bool loginValidadoNoBanco = false;
+
   late MQTTService mqtt;
 
   @override
@@ -54,6 +53,8 @@ class _LoginPageState extends State<LoginPage> {
           context,
         ).showSnackBar(SnackBar(content: Text(msg)));
       },
+      onCadastroAceito: () {},
+      onCadastroNegado: (msg) {},
     );
     mqtt.inicializar();
   }
@@ -82,14 +83,6 @@ class _LoginPageState extends State<LoginPage> {
     ).showSnackBar(SnackBar(content: Text(resultado.mensagem)));
 
     setState(() => _isLoading = false);
-
-    //ScaffoldMessenger.of(
-    //  context,
-    //).showSnackBar(SnackBar(content: Text(resultado.mensagem)));
-
-    //if (resultado.sucesso) {
-    // loginValidadoNoBanco = true;
-    // }
   }
 
   @override
@@ -137,6 +130,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 const SizedBox(height: 50),
+                /*
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -147,11 +141,10 @@ class _LoginPageState extends State<LoginPage> {
                     const SizedBox(width: 4),
                     InkWell(
                       onTap: () {
-                        Navigator.push(
+                        Navigator.pushNamed(
                           context,
-                          MaterialPageRoute(
-                            builder: (context) => CadastroPage(),
-                          ),
+                          '/cadastro',
+                          arguments: {'cargo': widget.cargo},
                         );
                       },
                       child: const Text(
@@ -163,8 +156,8 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ],
-                ),
-                const SizedBox(height: 20),
+                ),*/
+                /*const SizedBox(height: 20),*/
                 if (_tokenRecebido != null)
                   Padding(
                     padding: const EdgeInsets.all(8.0),

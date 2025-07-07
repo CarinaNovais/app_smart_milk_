@@ -3,22 +3,18 @@ import 'my_textField.dart';
 
 class CadastroForm extends StatelessWidget {
   final TextEditingController nomeController;
-  final TextEditingController regiaoController;
-  final TextEditingController idTanqueController;
-  final TextEditingController telefoneController;
-  final TextEditingController enderecoController;
-  final TextEditingController emailController;
+  final TextEditingController idregiaoController;
+  final TextEditingController idtanqueController;
+  final TextEditingController contatoController;
   final TextEditingController senhaController;
   final TextEditingController confirmarSenhaController;
 
   const CadastroForm({
     super.key,
     required this.nomeController,
-    required this.regiaoController,
-    required this.idTanqueController,
-    required this.telefoneController,
-    required this.enderecoController,
-    required this.emailController,
+    required this.idregiaoController,
+    required this.idtanqueController,
+    required this.contatoController,
     required this.senhaController,
     required this.confirmarSenhaController,
   });
@@ -33,29 +29,19 @@ class CadastroForm extends StatelessWidget {
           obscureText: false,
         ),
         MyTextField(
-          controller: regiaoController,
-          hintText: 'Região',
+          controller: idregiaoController,
+          hintText: 'ID Região',
           obscureText: false,
         ),
         MyTextField(
-          controller: idTanqueController,
+          controller: idtanqueController,
           hintText: 'ID Tanque',
-          obscureText: false,
-        ),
-        MyTextField(
-          controller: telefoneController,
-          hintText: 'Telefone',
-          obscureText: false,
-        ),
-        MyTextField(
-          controller: enderecoController,
-          hintText: 'Endereço',
           obscureText: false,
         ),
         const SizedBox(height: 10),
         MyTextField(
-          controller: emailController,
-          hintText: 'E-mail',
+          controller: contatoController,
+          hintText: 'Telefone',
           obscureText: false,
         ),
         const SizedBox(height: 10),

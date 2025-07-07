@@ -56,7 +56,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     ),
     GridItem(
       imagePath: 'lib/images/statusTanque.png',
-      route: '/page4',
+      route: '/dadosTanque',
       legenda: 'Status Tanque',
     ),
     GridItem(
@@ -74,6 +74,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF0097B2),
       appBar: Navbar(
         title: 'Bem-vindo!',
         style: const TextStyle(
@@ -132,7 +133,12 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: HomeGrid(items: items),
+        child: HomeGrid(
+          items: items,
+          onItemTap: (item) {
+            Navigator.pushNamed(context, item.route);
+          },
+        ),
       ),
     );
   }
