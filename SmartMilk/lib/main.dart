@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:app_smart_milk/pages/index.dart';
 import 'package:app_smart_milk/pages/login_page.dart';
 import 'package:app_smart_milk/pages/perfil.dart';
-import '';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

@@ -35,11 +35,11 @@ def verificar_login(nome, senha):
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
-        consulta = "SELECT * FROM usuario WHERE nome = %s AND senha = %s"
+        consulta = "SELECT nome, senha, idtanque, idregiao FROM usuario WHERE nome = %s AND senha = %s"
         cursor.execute(consulta, (nome, senha))
         resultado = cursor.fetchone()
         conn.close()
-        return resultado is not None
+        return resultado
     except Exception as erro:
         print("Erro ao acessar banco:", erro)
         return False
@@ -116,21 +116,25 @@ def on_message(client, userdata, msg):
             nome = payload.get("nome")
             senha = payload.get("senha")
            # cargo = payload.get("cargo")
+            resultado = verificar_login(nome,senha)
+            print("🔍 Resultado do login:", resultado)  # 👈 AQUI
 
-            if verificar_login(nome, senha):
+            if resultado:
                 token, expira_em = gerar_token(nome)
                 resposta = {
                     "status": "aceito",
                     "token": token,
                     "expira_em": expira_em.isoformat(),
-                    "nome": nome
+                    "nome": resultado[0],
+                    "idtanque": resultado[2],
+                    "idregiao": resultado[3],
+                    "senha": resultado[1]
                 }
             else:
                 resposta = {
                 "status": "negado",
                 "mensagem": "Credenciais inválidas"
             }
-            
 
             client.publish("login/resultado", json.dumps(resposta))
             print(f"[MQTT] Resultado enviado: {resposta}")

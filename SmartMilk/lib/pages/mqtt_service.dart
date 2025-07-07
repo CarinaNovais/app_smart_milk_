@@ -77,6 +77,10 @@ class MQTTService {
             await prefs.setString('token', dados['token']);
             await prefs.setString('expira_em', dados['expira_em']);
             await prefs.setString('nome', dados['nome']);
+            await prefs.setString('senha', dados['senha'].toString());
+            await prefs.setString('idtanque', dados['idtanque'].toString());
+            await prefs.setString('idregiao', dados['idregiao'].toString());
+
             print('✅ Token e dados do usuário salvos com sucesso.');
             onLoginAceito();
           } else {

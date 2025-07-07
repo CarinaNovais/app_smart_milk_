@@ -3,6 +3,7 @@ import 'package:app_smart_milk/components/navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
+import 'dart:convert'; // para base64Decode
 
 late MQTTService mqtt;
 
@@ -32,6 +33,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     mqtt.inicializar();
   }
 
+  //fazer essa funcao ficar universal
   Future<void> carregarDadosUsuario() async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -103,13 +105,31 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
             UserAccountsDrawerHeader(
               accountName: Text(nomeUsuario),
               accountEmail: const Text('Email'),
-              currentAccountPicture: const CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  'U',
-                  style: TextStyle(fontSize: 24.0, color: Colors.black),
-                ),
+              currentAccountPicture: FutureBuilder<SharedPreferences>(
+                future: SharedPreferences.getInstance(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) {
+                    return const CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.person, color: appBlue, size: 40),
+                    );
+                  }
+
+                  final fotoBase64 = snapshot.data!.getString('foto');
+                  if (fotoBase64 != null && fotoBase64.isNotEmpty) {
+                    final imageBytes = base64Decode(fotoBase64);
+                    return CircleAvatar(
+                      backgroundImage: MemoryImage(imageBytes),
+                    );
+                  } else {
+                    return const CircleAvatar(
+                      backgroundColor: Colors.white,
+                      child: Icon(Icons.person, color: appBlue, size: 40),
+                    );
+                  }
+                },
               ),
+
               decoration: const BoxDecoration(color: appBlue),
             ),
             ListTile(
