@@ -22,6 +22,14 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
   void initState() {
     super.initState();
     carregarDadosUsuario();
+    mqtt = MQTTService(
+      onLoginAceito: () {},
+      onLoginNegado: (_) {},
+      onCadastroAceito: () {},
+      onCadastroNegado: (_) {},
+      onDadosTanque: (_) {},
+    );
+    mqtt.inicializar();
   }
 
   Future<void> carregarDadosUsuario() async {
