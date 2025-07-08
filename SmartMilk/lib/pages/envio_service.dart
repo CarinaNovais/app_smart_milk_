@@ -20,7 +20,7 @@ Future<LoginResultado> enviarLogin({
   required String senha,
   required int cargo,
 }) async {
-  final uri = Uri.parse('http://192.168.66.22:5000/login'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.11:5000/login'); //ip meu notebook
   final body = jsonEncode({"nome": nome, "senha": senha, "cargo": cargo});
 
   try {
@@ -51,6 +51,53 @@ Future<LoginResultado> enviarLogin({
   }
 }
 
+class FotoPerfilResultado {
+  final bool sucesso;
+  final String mensagem;
+
+  FotoPerfilResultado({required this.sucesso, required this.mensagem});
+}
+
+Future<FotoPerfilResultado> enviarFotoPerfil({
+  required String nome,
+  required int idtanque,
+  required String fotoBase64,
+}) async {
+  final uri = Uri.parse('http://192.168.66.11:5000/perfil/editar_foto');
+  final body = jsonEncode({
+    "nome": nome,
+    "idtanque": idtanque,
+    "foto": fotoBase64,
+  });
+
+  try {
+    final resposta = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final dados = jsonDecode(resposta.body);
+
+    if (resposta.statusCode == 200) {
+      return FotoPerfilResultado(
+        sucesso: true,
+        mensagem: dados["status"] ?? "Foto publicada com sucesso!",
+      );
+    } else {
+      return FotoPerfilResultado(
+        sucesso: false,
+        mensagem: dados["erro"] ?? "Erro ao atualizar foto.",
+      );
+    }
+  } catch (e) {
+    return FotoPerfilResultado(
+      sucesso: false,
+      mensagem: "Erro ao conectar ao servidor.",
+    );
+  }
+}
+
 Future<CadastroResultado> enviarCadastro({
   required String nome,
   required String senha,
@@ -60,7 +107,7 @@ Future<CadastroResultado> enviarCadastro({
   required String contato,
   String? foto,
 }) async {
-  final uri = Uri.parse('http://192.168.66.16:5000/cadastro'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.11:5000/cadastro'); //ip meu notebook
   final body = jsonEncode({
     "nome": nome,
     "senha": senha,

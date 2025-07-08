@@ -12,7 +12,7 @@ JWT_EXPIRACAO_MINUTOS = 30 #tempo de expiração do token
 # Função para conectar no banco de dados
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.66.17", #ip computador joao
+        host="192.168.66.15", #ip computador joao
         user="root",
         password="root",
         database="mimosa"
@@ -176,6 +176,30 @@ def on_message(client, userdata, msg):
             client.publish("cadastro/resultado", json.dumps(resposta))
             print(f"[MQTT] Resultado CADASTRO enviado: {resposta}")
 
+        elif topico == "perfil/editar_foto/entrada":
+            nome = payload.get("nome")
+            idtanque = int(payload.get("idtanque"))
+            foto_base64 = payload.get("foto")
+
+            try:
+                import base64
+                foto_bytes = base64.b64decode(foto_base64)
+
+                conn = conectar_banco()
+                cursor = conn.cursor()
+
+                update = """UPDATE usuario SET foto = %s WHERE nome = %s AND idtanque = %s"""
+                cursor.execute(update,(foto_bytes, nome, idtanque))
+                conn.commit()
+                conn.close()
+
+                client.publish("perfil/editar_foto/resultado", json.dumps({"status": "sucesso"}))
+                print("📸 Foto atualizada no banco com sucesso.")
+                
+            except Exception as e:
+                print("Erro ao atualizar foto:", e)
+                client.publish("perfil/editar_foto/resultado", json.dumps({"status": "erro", "mensagem": str(e)}))
+
         elif topico == "tanque/buscar":
             nome = payload.get("nome")
             dados = buscarDadosTanque(nome)
@@ -219,7 +243,7 @@ client.connect("192.168.66.50", 1883)
 client.subscribe("login/entrada")
 client.subscribe("cadastro/entrada")
 client.subscribe("tanque/buscar")
-
+client.subscribe("perfil/editar_foto/entrada")
 
 print("🟢 Validador MQTT com sessão JWT rodando...")
 client.loop_forever()

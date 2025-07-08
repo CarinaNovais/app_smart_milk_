@@ -87,6 +87,8 @@ class _PerfilPage extends State<PerfilPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('foto', fotoBase64);
 
+      await mqtt.enviarNovaFoto(fotoBase64);
+
       setState(() {
         imagemPerfil = File(pickedImage.path);
         imagemMemoria = bytes;

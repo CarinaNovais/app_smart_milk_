@@ -9,6 +9,8 @@ class MQTTService {
   final Function onCadastroAceito;
   final Function(String) onCadastroNegado;
   final Function(Map<String, dynamic>)? onDadosTanque;
+  final Function()? onFotoEditada;
+  final Function(String)? onErroFoto;
 
   MQTTService({
     required this.onLoginAceito,
@@ -16,6 +18,8 @@ class MQTTService {
     required this.onCadastroAceito,
     required this.onCadastroNegado,
     this.onDadosTanque,
+    this.onFotoEditada,
+    this.onErroFoto,
   });
 
   late MqttClient client;
@@ -43,8 +47,13 @@ class MQTTService {
       if (connectionStatus != null &&
           connectionStatus.state == MqttConnectionState.connected) {
         print('Conectado ao broker, inscrevendo nos tópicos...');
+
         client.subscribe('login/resultado', MqttQos.atMostOnce);
         client.subscribe('cadastro/resultado', MqttQos.atMostOnce);
+        client.subscribe('tanque/resposta', MqttQos.atMostOnce);
+        client.subscribe('perfil/editar_foto/resultado', MqttQos.atMostOnce);
+        //client.subscribe('editar_foto/resultado', MqttQos.atMostOnce);
+        //client.subscribe("perfil/editar_foto")
 
         client.updates?.listen(_onMessageReceived);
       } else {
@@ -86,9 +95,7 @@ class MQTTService {
           } else {
             onLoginNegado(dados['mensagem'] ?? 'Credenciais inválidas');
           }
-        }
-        // 🔽 NOVO: Tratamento do resultado do cadastro
-        else if (topic == 'cadastro/resultado') {
+        } else if (topic == 'cadastro/resultado') {
           if (dados['status'] == 'aceito') {
             print('✅ Cadastro aceito!');
             onCadastroAceito();
@@ -101,6 +108,14 @@ class MQTTService {
             onDadosTanque?.call(dados['dados']);
           } else {
             print('❌ Erro ao buscar dados do tanque: ${dados['mensagem']}');
+          }
+        } else if (topic == 'perfil/editar_foto/resultado') {
+          if (dados['status'] == 'aceito') {
+            print('✅ Foto atualizada com sucesso no servidor.');
+            onFotoEditada?.call();
+          } else {
+            print('❌ Erro ao atualizar foto: ${dados['mensagem']}');
+            onErroFoto?.call(dados['mensagem']);
           }
         }
       } else {
@@ -130,6 +145,32 @@ class MQTTService {
     client.subscribe("tanque/resposta", MqttQos.atMostOnce);
 
     print('📤 Mensagem enviada para "tanque/buscar": $msg');
+  }
+
+  Future<void> enviarNovaFoto(String base64Foto) async {
+    final prefs = await SharedPreferences.getInstance();
+    final nome = prefs.getString('nome');
+    final idtanque = prefs.getString('idtanque');
+
+    if (nome == null || idtanque == null) {
+      print('⚠️ Dados da sessão ausentes');
+      return;
+    }
+
+    final msg = jsonEncode({
+      "nome": nome,
+      "idtanque": int.parse(idtanque),
+      "foto": base64Foto,
+    });
+
+    final builder = MqttClientPayloadBuilder()..addString(msg);
+    client.publishMessage(
+      "perfil/editar_foto/entrada",
+      MqttQos.atMostOnce,
+      builder.payload!,
+    );
+
+    print("📤 Nova foto enviada para edição de perfil via MQTT");
   }
 
   Future<void> logout() async {
