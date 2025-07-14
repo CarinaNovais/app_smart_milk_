@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:app_smart_milk/pages/index.dart';
 import 'package:app_smart_milk/pages/login_page.dart';
 import 'package:app_smart_milk/pages/perfil.dart';
+import 'package:app_smart_milk/pages/configuracoes.dart';
+import 'package:app_smart_milk/pages/depositosProdutor.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,11 +34,13 @@ class _MyAppState extends State<MyApp> {
       routes: {
         // '/': (context) => QRViewExample(), // Página inicial
         '/': (context) => IndexPage(), // Página inicial
-        '/login': (context) => LoginPage(cargo: 1), // Página de login
+        '/login': (context) => LoginPage(cargo: 1),
         '/homeProdutor': (context) => HomeProdutorPage(),
         '/cadastro': (context) => CadastroPage(),
         '/dadosTanque': (context) => DadosTanquePage(),
         '/perfil': (context) => PerfilPage(),
+        '/configuracoes': (context) => ConfiguracoesPage(),
+        '/depositosProdutor': (context) => DepositosprodutorPage(),
       },
     );
   }
