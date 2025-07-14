@@ -42,7 +42,7 @@ class _CadastroPageState extends State<CadastroPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Cadastro realizado com sucesso!')),
           );
-          Navigator.pushReplacementNamed(context, '/login');
+          Navigator.pushReplacementNamed(context, '/index');
         }
       },
       onCadastroNegado: (msg) {
@@ -56,18 +56,6 @@ class _CadastroPageState extends State<CadastroPage> {
     mqtt.inicializar();
   }
 
-  /*Future<void> escolherFoto() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-
-    if (image != null) {
-      final bytes = await image.readAsBytes();
-      setState(() {
-        foto = base64Encode(bytes);
-      });
-    }
-  }
-*/
   Future<void> executarCadastro() async {
     final nome = nomeController.text.trim();
     final idregiao = idregiaoController.text.trim();

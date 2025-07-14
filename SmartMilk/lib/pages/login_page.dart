@@ -62,6 +62,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> executarLogin() async {
     final nome = usernameController.text.trim();
     final senha = passwordController.text.trim();
+    final cargo = widget.cargo;
 
     if (nome.isEmpty || senha.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -72,11 +73,7 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
 
-    final resultado = await enviarLogin(
-      nome: nome,
-      senha: senha,
-      cargo: widget.cargo,
-    );
+    final resultado = await enviarLogin(nome: nome, senha: senha, cargo: cargo);
 
     ScaffoldMessenger.of(
       context,

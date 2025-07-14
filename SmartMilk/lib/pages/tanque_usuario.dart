@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:app_smart_milk/components/tanque_dinamico_visual.dart';
 //import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
+import 'package:app_smart_milk/components/navbar.dart';
+import 'package:app_smart_milk/components/menuDrawer.dart';
+
+const Color appBlue = Color(0xFF0097B2);
 
 class DadosTanquePage extends StatefulWidget {
   const DadosTanquePage({super.key});
@@ -71,17 +75,21 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0097B2),
-      appBar: AppBar(
-        title: const Text('Dados do Tanque'),
-        backgroundColor: const Color(0xFF0097B2),
-        foregroundColor: Colors.white,
+      backgroundColor: appBlue,
+      appBar: const Navbar(
+        title: 'Dados do Tanque',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
       ),
+      endDrawer: const MenuDrawer(),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
-            TanqueVisual(nivel: nivel), // usa o valor dinâmico
+            TanqueVisual(nivel: nivel),
             const SizedBox(height: 24),
             Expanded(
               child: GridView.count(

@@ -56,9 +56,6 @@ class _QRViewExampleState extends State<QRViewExample> {
       setState(() {
         result = scanData;
       });
-
-      // Aqui você pode navegar ou tratar o resultado
-      // Ex: Navigator.push(...)
     });
   }
 
