@@ -3,6 +3,7 @@ import mysql.connector
 import json
 import jwt
 import datetime
+import base64
 
 #Configurações do JWT
 JWT_SECRET = 'mimosa' #chave_secreta_aqui
@@ -12,7 +13,7 @@ JWT_EXPIRACAO_MINUTOS = 30 #tempo de expiração do token
 # Função para conectar no banco de dados
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.66.15", #ip computador joao
+        host="192.168.66.11", #ip computador joao
         user="root",
         password="root",
         database="mimosa"
@@ -31,12 +32,12 @@ def gerar_token(usuario):
 
 #funcao verificar se login esta correto no MyQL
 #banco ipJoao
-def verificar_login(nome, senha):
+def verificar_login(nome, senha, cargo):
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
-        consulta = "SELECT nome, senha, idtanque, idregiao FROM usuario WHERE nome = %s AND senha = %s"
-        cursor.execute(consulta, (nome, senha))
+        consulta = "SELECT nome, senha, idtanque, idregiao FROM usuario WHERE nome = %s AND senha = %s AND cargo = %s"
+        cursor.execute(consulta, (nome, senha, cargo))
         resultado = cursor.fetchone()
         conn.close()
         return resultado
@@ -44,6 +45,23 @@ def verificar_login(nome, senha):
         print("Erro ao acessar banco:", erro)
         return False
     
+def atualizar_usuario(campo, valor, nome, idtanque):
+    try:
+        conn = conectar_banco()
+        cursor = conn.cursor()
+
+        query = f"UPDATE usuario SET {campo} = %s WHERE nome = %s AND idtanque = %s"
+        cursor.execute(query, (valor, nome, idtanque))
+
+        conn.commit()
+        conn.close()
+        return True, f"{campo} atualizado com sucesso"
+    except Exception as erro:
+        print(f"Erro ao atualizar {campo}:", erro)
+        return False, f"Erro ao atualizar {campo}"
+
+
+
 def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_bytes=None):
     try:
         conn = conectar_banco()
@@ -63,9 +81,8 @@ def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_byt
             return False, "Tanque e/ou região inválidos"
 
         # Insere novo usuário
-        insert = """ INSERT INTO usuario (nome, senha, idtanque, idregiao, cargo, saldo, litros, contato, foto) VALUES (%s, %s, %s, %s, %s, NULL, NULL, %s, %s)"""
-        cursor.execute(insert, (nome, senha, idtanque, idregiao, cargo, contato, foto_bytes))
-
+        insert = """ INSERT INTO usuario (nome, senha, idtanque, idregiao, cargo, saldo, litros, contato, foto) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        cursor.execute(insert, (nome, senha, idtanque, idregiao, cargo, None, None,contato, foto_bytes))
 
 
         conn.commit()
@@ -75,7 +92,24 @@ def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_byt
         print("Erro ao cadastrar usuário:", erro)
         return False, "Erro ao cadastrar usuário"
 
-        
+def atualizarFoto(foto_bytes, nome, idtanque):
+    try:
+        conn = conectar_banco()
+        cursor = conn.cursor()
+
+         # Insere novo usuário
+        update = """UPDATE usuario SET foto = %s WHERE nome = %s AND idtanque = %s"""
+        cursor.execute(update, (foto_bytes, nome, idtanque))
+
+
+        conn.commit()
+        conn.close()
+
+        return True, "Foto Atualizada com sucesso"
+    except Exception as erro:
+        print("Erro ao atualizar foto:", erro)
+        return False, "Erro ao atualizar foto"
+
 
 def buscarDadosTanque(nome):
     try:
@@ -115,8 +149,8 @@ def on_message(client, userdata, msg):
         if topico == "login/entrada":
             nome = payload.get("nome")
             senha = payload.get("senha")
-           # cargo = payload.get("cargo")
-            resultado = verificar_login(nome,senha)
+            cargo = payload.get("cargo")
+            resultado = verificar_login(nome,senha,cargo)
             print("🔍 Resultado do login:", resultado)  # 👈 AQUI
 
             if resultado:
@@ -147,58 +181,33 @@ def on_message(client, userdata, msg):
             idtanque = int(payload.get("idtanque"))
             idregiao = int(payload.get("idregiao"))
             contato = payload.get("contato")
-            foto_base64 = payload.get("foto")
+            foto_base64 = payload.get("foto")  # Pode ser None ou string base64
 
             if foto_base64:
                 import base64
                 try:
                     foto_bytes = base64.b64decode(foto_base64)
                 except Exception as e:
-                        print("Erro ao decodificar foto:", e)
-                        foto_bytes = None
+                    print("Erro ao decodificar foto:", e)
+                    foto_bytes = None
             else:
-                foto_bytes = None
+                foto_bytes = None  # Aqui você define foto_bytes como None para foto null
 
             sucesso, mensagem = cadastrar_usuario(nome, senha, idtanque, idregiao, cargo, contato, foto_bytes)
 
-
             if sucesso:
                 resposta = {
-                    "status": "aceito",
-                    "mensagem": mensagem
-                }
+            "status": "aceito",
+            "mensagem": mensagem
+            }
             else:
                 resposta = {
-                    "status": "negado",
-                    "mensagem": mensagem
-                }
+            "status": "negado",
+            "mensagem": mensagem
+            }
 
             client.publish("cadastro/resultado", json.dumps(resposta))
             print(f"[MQTT] Resultado CADASTRO enviado: {resposta}")
-
-        elif topico == "perfil/editar_foto/entrada":
-            nome = payload.get("nome")
-            idtanque = int(payload.get("idtanque"))
-            foto_base64 = payload.get("foto")
-
-            try:
-                import base64
-                foto_bytes = base64.b64decode(foto_base64)
-
-                conn = conectar_banco()
-                cursor = conn.cursor()
-
-                update = """UPDATE usuario SET foto = %s WHERE nome = %s AND idtanque = %s"""
-                cursor.execute(update,(foto_bytes, nome, idtanque))
-                conn.commit()
-                conn.close()
-
-                client.publish("perfil/editar_foto/resultado", json.dumps({"status": "sucesso"}))
-                print("📸 Foto atualizada no banco com sucesso.")
-                
-            except Exception as e:
-                print("Erro ao atualizar foto:", e)
-                client.publish("perfil/editar_foto/resultado", json.dumps({"status": "erro", "mensagem": str(e)}))
 
         elif topico == "tanque/buscar":
             nome = payload.get("nome")
@@ -225,6 +234,49 @@ def on_message(client, userdata, msg):
                 }
             client.publish("tanque/resposta", json.dumps(resposta))
             print(f"[MQTT] Dados do tanque enviados para 'tanque/resposta': {resposta}")
+        
+        elif topico == "fotoAtualizada/entrada":
+            print(f"📨 Payload recebido: {payload}")
+            print(f"📷 Base64 (início): {payload.get('foto', '')[:100]}")
+
+            nome = payload.get("nome")
+            idtanque = payload.get("idtanque")
+            foto_base64 = payload.get("foto")
+
+            if not nome or not idtanque or not foto_base64:
+                resposta = {"status": "negado", "mensagem": "Dados incompletos para atualizar foto"}
+            else:
+                try:
+                    foto_bytes = base64.b64decode(foto_base64)
+                    print(f"🧪 Imagem decodificada: {len(foto_bytes)} bytes")
+                    sucesso, mensagem = atualizarFoto(foto_bytes, nome, idtanque)
+                    resposta = {
+                        "status": "aceito" if sucesso else "negado",
+                        "mensagem": mensagem
+                    }
+                except Exception as e:
+                    print("❌ Erro ao decodificar imagem:", e)
+                    resposta = {"status": "negado", "mensagem": "Erro ao processar imagem"}
+            client.publish("fotoAtualizada/resultado", json.dumps(resposta))
+
+        elif topico == "editarUsuario/entrada":
+            campo = payload.get("campo")  # ex: "nome", "senha", "idregiao"...
+            valor = payload.get("valor")
+            nome = payload.get("nome")
+            idtanque = payload.get("idtanque")
+
+            if not campo or not valor or not nome or not idtanque:
+                resposta = {"status": "negado", "mensagem": "Dados incompletos"}
+            else:
+                sucesso, mensagem = atualizar_usuario(campo, valor, nome, idtanque)
+                resposta = {
+                        "status": "aceito" if sucesso else "negado",
+                        "mensagem": mensagem
+            }
+
+            client.publish("editarUsuario/resultado", json.dumps(resposta))
+            print(f"[MQTT] Atualização de usuário enviada: {resposta}")
+
 
         else:
             print(f"[MQTT] Tópico desconhecido: {topico}")
@@ -243,7 +295,9 @@ client.connect("192.168.66.50", 1883)
 client.subscribe("login/entrada")
 client.subscribe("cadastro/entrada")
 client.subscribe("tanque/buscar")
-client.subscribe("perfil/editar_foto/entrada")
+client.subscribe("fotoAtualizada/entrada")
+client.subscribe("editarUsuario/entrada")
+
 
 print("🟢 Validador MQTT com sessão JWT rodando...")
 client.loop_forever()
