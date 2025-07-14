@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 
+const Color appBlue = Color(0xFF0097B2);
+
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  final VoidCallback? onNotificationPressed;
   final TextStyle style;
+  final VoidCallback? onNotificationPressed;
 
   const Navbar({
     super.key,
     required this.title,
-    this.onNotificationPressed,
     required this.style,
+    this.onNotificationPressed,
   });
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: const Color(0xFF0097B2),
+      backgroundColor: appBlue,
       title: Text(title, style: style),
       actions: [
         IconButton(
@@ -33,7 +35,9 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
               (context) => IconButton(
                 icon: const Icon(Icons.menu, color: Colors.white70),
                 onPressed: () {
-                  Scaffold.of(context).openEndDrawer(); // Funciona sempre aqui
+                  Scaffold.of(
+                    context,
+                  ).openEndDrawer(); // Abre o Drawer da página
                 },
               ),
         ),
