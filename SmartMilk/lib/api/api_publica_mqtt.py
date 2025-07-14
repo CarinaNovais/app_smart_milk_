@@ -45,7 +45,6 @@ def cadastro():
     #foto = dados.get("foto")
 
     if all(x is not None for x in [nome, senha, idregiao, idtanque, contato]):
-    # cargo pode ser None, não verificamos aqui
 
         publish.single(
             "cadastro/entrada",
@@ -60,21 +59,20 @@ def cadastro():
         return jsonify({"status": "cadastro publicado"}), 200
     return jsonify({"erro": "faltam dados obrigatórios"}), 400
 
-@app.route('/perfil/editar_foto', methods=['POST'])
-def editar_foto():
+@app.route('/fotoAtualizada', methods=['POST'])
+def fotoAtualizada():
     dados = request.get_json()
-
-    nome = dados.get('nome')
-    idtanque = dados.get('idtanque')
-    foto_base64 = dados.get('foto')
-
-    if not nome or not idtanque or not foto_base64:
-        return jsonify({"status": "erro", "mensagem": "Parâmetros insuficientes"}), 400
     
-    try:
+    nome = dados.get("nome")
+    foto = dados.get("foto")
+
+    print(f"📷 Base64 (início): {foto[:100]}")
+
+
+    if all(k is not None for k in[nome,foto]):
         publish.single(
-            topic="perfil/editar_foto/entrada",  # Tópico correto para a foto
-            payload=json.dumps(dados),  # Converte para JSON
+            "fotoAtualizada/entrada",
+            json.dumps(dados),  # converte para JSON
             hostname=MQTT_BROKER,
             port=MQTT_PORT,
             auth={
@@ -82,11 +80,32 @@ def editar_foto():
                 'password': MQTT_PASSWORD
             }
         )
-        return jsonify({"status": "sucesso", "mensagem": "Foto publicada no MQTT"}), 200
-    except Exception as e:
-        return jsonify({"status": "erro", "mensagem": f"Erro ao publicar MQTT: {e}"}), 500
+        return jsonify({"status": "foto publicada"}), 200
+    return jsonify({"erro": "faltam dados obrigatórios"}), 400
 
+@app.route('/editarUsuario', methods=['POST'])
+def editar_usuario():
+    dados = request.get_json()
 
+    nome = dados.get("nome")
+    idtanque = dados.get("idtanque")
+    campo = dados.get("campo")     # exemplo: "senha"
+    valor = dados.get("valor")     # novo valor para o campo
+
+    if all(x is not None for x in [nome, idtanque, campo, valor]):
+        publish.single(
+            "editarUsuario/entrada",
+            json.dumps(dados),  # envia tudo como está
+            hostname=MQTT_BROKER,
+            port=MQTT_PORT,
+            auth={
+                'username': MQTT_USERNAME,
+                'password': MQTT_PASSWORD
+            }
+        )
+        return jsonify({"status": "atualização publicada"}), 200
+
+    return jsonify({"erro": "faltam dados obrigatórios"}), 400
 
 
 if __name__ == "__main__":
