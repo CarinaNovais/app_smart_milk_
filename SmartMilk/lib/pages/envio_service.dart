@@ -15,12 +15,68 @@ class CadastroResultado {
   CadastroResultado({required this.sucesso, required this.mensagem});
 }
 
+class EnviarFotoResultado {
+  final bool sucesso;
+  final String mensagem;
+
+  EnviarFotoResultado({required this.sucesso, required this.mensagem});
+}
+
+class AtualizacaoResultado {
+  final bool sucesso;
+  final String mensagem;
+
+  AtualizacaoResultado({required this.sucesso, required this.mensagem});
+}
+
+Future<AtualizacaoResultado> enviarAtualizacao({
+  required String nome,
+  required String idtanque,
+  required String campo,
+  required String valor,
+}) async {
+  final uri = Uri.parse('http://192.168.66.16:5000/atualizar');
+  final body = jsonEncode({
+    "nome": nome,
+    "idtanque": idtanque,
+    "campo": campo,
+    "valor": valor,
+  });
+
+  try {
+    final resposta = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final dados = jsonDecode(resposta.body);
+
+    if (resposta.statusCode == 200) {
+      return AtualizacaoResultado(
+        sucesso: true,
+        mensagem: dados["mensagem"] ?? "Campo atualizado com sucesso!",
+      );
+    } else {
+      return AtualizacaoResultado(
+        sucesso: false,
+        mensagem: dados["erro"] ?? "Erro ao atualizar campo.",
+      );
+    }
+  } catch (e) {
+    return AtualizacaoResultado(
+      sucesso: false,
+      mensagem: "Erro ao conectar ao servidor.",
+    );
+  }
+}
+
 Future<LoginResultado> enviarLogin({
   required String nome,
   required String senha,
   required int cargo,
 }) async {
-  final uri = Uri.parse('http://192.168.66.11:5000/login'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.16:5000/login'); //ip meu notebook
   final body = jsonEncode({"nome": nome, "senha": senha, "cargo": cargo});
 
   try {
@@ -51,24 +107,19 @@ Future<LoginResultado> enviarLogin({
   }
 }
 
-class FotoPerfilResultado {
-  final bool sucesso;
-  final String mensagem;
-
-  FotoPerfilResultado({required this.sucesso, required this.mensagem});
-}
-
-Future<FotoPerfilResultado> enviarFotoPerfil({
+Future<EnviarFotoResultado> enviarFoto({
   required String nome,
-  required int idtanque,
   required String fotoBase64,
 }) async {
-  final uri = Uri.parse('http://192.168.66.11:5000/perfil/editar_foto');
-  final body = jsonEncode({
-    "nome": nome,
-    "idtanque": idtanque,
-    "foto": fotoBase64,
-  });
+  final uri = Uri.parse(
+    'http://192.168.66.16:5000/fotoAtualizada',
+  ); //ip mei notebook
+  final body = jsonEncode({"nome": nome, "foto": fotoBase64});
+
+  print('📤 Enviando foto para $uri');
+  print('👤 Nome: $nome');
+  print('🖼️ Foto base64 (início): ${fotoBase64.substring(0, 100)}');
+  print('📦 Tamanho total da base64: ${fotoBase64.length} caracteres');
 
   try {
     final resposta = await http.post(
@@ -77,21 +128,25 @@ Future<FotoPerfilResultado> enviarFotoPerfil({
       body: body,
     );
 
+    print('✅ Resposta recebida com status: ${resposta.statusCode}');
+    print('💬 Corpo da resposta: ${resposta.body}');
+
     final dados = jsonDecode(resposta.body);
 
     if (resposta.statusCode == 200) {
-      return FotoPerfilResultado(
+      return EnviarFotoResultado(
         sucesso: true,
-        mensagem: dados["status"] ?? "Foto publicada com sucesso!",
+        mensagem: dados["status"] ?? "Foto atualizada com sucesso!",
       );
     } else {
-      return FotoPerfilResultado(
+      return EnviarFotoResultado(
         sucesso: false,
-        mensagem: dados["erro"] ?? "Erro ao atualizar foto.",
+        mensagem: dados["erro"] ?? "Erro ao atualizar foto",
       );
     }
   } catch (e) {
-    return FotoPerfilResultado(
+    print('❌ Exceção durante envio da foto: $e');
+    return EnviarFotoResultado(
       sucesso: false,
       mensagem: "Erro ao conectar ao servidor.",
     );
@@ -107,7 +162,7 @@ Future<CadastroResultado> enviarCadastro({
   required String contato,
   String? foto,
 }) async {
-  final uri = Uri.parse('http://192.168.66.11:5000/cadastro'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.16:5000/cadastro'); //ip meu notebook
   final body = jsonEncode({
     "nome": nome,
     "senha": senha,
