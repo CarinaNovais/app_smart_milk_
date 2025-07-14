@@ -1,7 +1,9 @@
 import 'dart:convert';
+//import 'dart:nativewrappers/_internal/vm/lib/ffi_allocation_patch.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
+//import 'package:app_smart_milk/pages/envio_service.dart';
 
 class MQTTService {
   final Function onLoginAceito;
@@ -51,9 +53,8 @@ class MQTTService {
         client.subscribe('login/resultado', MqttQos.atMostOnce);
         client.subscribe('cadastro/resultado', MqttQos.atMostOnce);
         client.subscribe('tanque/resposta', MqttQos.atMostOnce);
-        client.subscribe('perfil/editar_foto/resultado', MqttQos.atMostOnce);
-        //client.subscribe('editar_foto/resultado', MqttQos.atMostOnce);
-        //client.subscribe("perfil/editar_foto")
+        client.subscribe('fotoAtualizada/resultado', MqttQos.atMostOnce);
+        client.subscribe('editarUsuario/resultado', MqttQos.atMostOnce);
 
         client.updates?.listen(_onMessageReceived);
       } else {
@@ -74,10 +75,11 @@ class MQTTService {
     );
     print('📥 Mensagem MQTT recebida no tópico "$topic"');
     print('💬 Conteúdo da mensagem: $payload');
+    print('🧾 [MQTT] Payload recebido (início): ${payload.substring(0, 120)}');
 
     try {
       final dados = jsonDecode(payload);
-
+      print('🔍 [MQTT] JSON decodificado: $dados');
       if (dados is Map && dados['status'] != null) {
         if (topic == 'login/resultado') {
           if (dados['status'] == 'aceito') {
@@ -93,6 +95,7 @@ class MQTTService {
             print('✅ Token e dados do usuário salvos com sucesso.');
             onLoginAceito();
           } else {
+            print('❌ Login negado: ${dados['mensagem']}');
             onLoginNegado(dados['mensagem'] ?? 'Credenciais inválidas');
           }
         } else if (topic == 'cadastro/resultado') {
@@ -109,13 +112,22 @@ class MQTTService {
           } else {
             print('❌ Erro ao buscar dados do tanque: ${dados['mensagem']}');
           }
-        } else if (topic == 'perfil/editar_foto/resultado') {
+        } else if (topic == 'fotoAtualizada/resultado') {
+          print('🖼️ Resultado da atualização de foto recebido!');
           if (dados['status'] == 'aceito') {
-            print('✅ Foto atualizada com sucesso no servidor.');
+            print('✅ Foto Aceita');
             onFotoEditada?.call();
           } else {
-            print('❌ Erro ao atualizar foto: ${dados['mensagem']}');
-            onErroFoto?.call(dados['mensagem']);
+            print('❌ Foto Negada');
+            onErroFoto?.call(dados['mensagem'] ?? 'Erro');
+          }
+        } else if (topic == 'editarUsuario/resultado') {
+          if (dados['status'] == 'aceito') {
+            print('✅ Campo atualizado com sucesso');
+            // onCampoAtualizado?.call(dados['mensagem']);
+          } else {
+            print('❌ Falha ao atualizar campo: ${dados['mensagem']}');
+            // Ou onErroCampo?.call(dados['mensagem']);
           }
         }
       } else {
@@ -145,32 +157,6 @@ class MQTTService {
     client.subscribe("tanque/resposta", MqttQos.atMostOnce);
 
     print('📤 Mensagem enviada para "tanque/buscar": $msg');
-  }
-
-  Future<void> enviarNovaFoto(String base64Foto) async {
-    final prefs = await SharedPreferences.getInstance();
-    final nome = prefs.getString('nome');
-    final idtanque = prefs.getString('idtanque');
-
-    if (nome == null || idtanque == null) {
-      print('⚠️ Dados da sessão ausentes');
-      return;
-    }
-
-    final msg = jsonEncode({
-      "nome": nome,
-      "idtanque": int.parse(idtanque),
-      "foto": base64Foto,
-    });
-
-    final builder = MqttClientPayloadBuilder()..addString(msg);
-    client.publishMessage(
-      "perfil/editar_foto/entrada",
-      MqttQos.atMostOnce,
-      builder.payload!,
-    );
-
-    print("📤 Nova foto enviada para edição de perfil via MQTT");
   }
 
   Future<void> logout() async {
