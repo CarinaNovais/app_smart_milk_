@@ -109,17 +109,26 @@ Future<LoginResultado> enviarLogin({
 
 Future<EnviarFotoResultado> enviarFoto({
   required String nome,
+  required String idtanque,
   required String fotoBase64,
 }) async {
   final uri = Uri.parse(
     'http://192.168.66.16:5000/fotoAtualizada',
   ); //ip mei notebook
-  final body = jsonEncode({"nome": nome, "foto": fotoBase64});
+  final body = jsonEncode({
+    "nome": nome,
+    "idtanque": idtanque,
+    "foto": fotoBase64,
+  });
 
   print('📤 Enviando foto para $uri');
   print('👤 Nome: $nome');
-  print('🖼️ Foto base64 (início): ${fotoBase64.substring(0, 100)}');
-  print('📦 Tamanho total da base64: ${fotoBase64.length} caracteres');
+  String preview =
+      fotoBase64.length > 100 ? fotoBase64.substring(0, 100) : fotoBase64;
+  print('🖼️ Foto base64 (início): $preview');
+
+  //print('🖼️ Foto base64 (início): ${fotoBase64.substring(0, 100)}');
+  //print('📦 Tamanho total da base64: ${fotoBase64.length} caracteres');
 
   try {
     final resposta = await http.post(

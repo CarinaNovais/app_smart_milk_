@@ -61,7 +61,6 @@ def atualizar_usuario(campo, valor, nome, idtanque):
         return False, f"Erro ao atualizar {campo}"
 
 
-
 def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_bytes=None):
     try:
         conn = conectar_banco()
@@ -151,7 +150,7 @@ def on_message(client, userdata, msg):
             senha = payload.get("senha")
             cargo = payload.get("cargo")
             resultado = verificar_login(nome,senha,cargo)
-            print("🔍 Resultado do login:", resultado)  # 👈 AQUI
+            print("🔍 Resultado do login:", resultado) 
 
             if resultado:
                 token, expira_em = gerar_token(nome)
@@ -184,7 +183,6 @@ def on_message(client, userdata, msg):
             foto_base64 = payload.get("foto")  # Pode ser None ou string base64
 
             if foto_base64:
-                import base64
                 try:
                     foto_bytes = base64.b64decode(foto_base64)
                 except Exception as e:
@@ -245,19 +243,64 @@ def on_message(client, userdata, msg):
 
             if not nome or not idtanque or not foto_base64:
                 resposta = {"status": "negado", "mensagem": "Dados incompletos para atualizar foto"}
-            else:
-                try:
-                    foto_bytes = base64.b64decode(foto_base64)
-                    print(f"🧪 Imagem decodificada: {len(foto_bytes)} bytes")
+                client.publish("fotoAtualizada/resultado", json.dumps(resposta))
+                return
+
+            try:
+                foto_bytes = base64.b64decode(foto_base64, validate=True)
+                print(f"🧪 Imagem decodificada com {len(foto_bytes)} bytes")
+
+                if len(foto_bytes) > 16_777_215:  # limite mediumblob 16MB
+                    resposta = {"status": "negado", "mensagem": "Imagem excede o limite de 16MB"}
+                else:
                     sucesso, mensagem = atualizarFoto(foto_bytes, nome, idtanque)
                     resposta = {
                         "status": "aceito" if sucesso else "negado",
                         "mensagem": mensagem
                     }
-                except Exception as e:
-                    print("❌ Erro ao decodificar imagem:", e)
-                    resposta = {"status": "negado", "mensagem": "Erro ao processar imagem"}
+
+            except Exception as e:
+                print("❌ Erro ao decodificar imagem:", e)
+                resposta = {"status": "negado", "mensagem": "Erro ao processar imagem"}
+
             client.publish("fotoAtualizada/resultado", json.dumps(resposta))
+            print(f"📤 Resposta enviada ao app: {resposta}")
+
+        #elif topico == "fotoAtualizada/entrada":
+         #   print(f"📨 Payload recebido: {payload}")
+          #  print(f"📷 Base64 (início): {payload.get('foto', '')[:100]}")
+
+           # nome = payload.get("nome")
+           # idtanque = payload.get("idtanque")
+           # foto_base64 = payload.get("foto")
+
+          #  if not nome or not idtanque or not foto_base64:
+           #     resposta = {"status": "negado", "mensagem": "Dados incompletos para atualizar foto"}
+            #    client.publish("fotoAtualizada/resultado", json.dumps(resposta))
+             #   return
+
+            #try:
+                # Decodifica com validação (pega erro se base64 for malformado)
+             #   foto_bytes = base64.b64decode(foto_base64, validate=True)
+
+              #  print(f"🧪 Imagem decodificada com {len(foto_bytes)} bytes")
+
+               # if len(foto_bytes) > 16_777_215:
+                 #   resposta = {"status": "negado", "mensagem": "Imagem excede o limite de 16MB"}
+                #else:
+                  #  sucesso, mensagem = atualizarFoto(foto_bytes, nome, idtanque)
+                   # resposta = {
+                    #    "status": "aceito" if sucesso else "negado",
+                     #   "mensagem": mensagem
+                    #}
+
+            #except Exception as e:
+             #   print("❌ Erro ao decodificar imagem:", e)
+              #  resposta = {"status": "negado", "mensagem": "Erro ao processar imagem"}
+
+           # client.publish("fotoAtualizada/resultado", json.dumps(resposta))
+           # print(f"📤 Resposta enviada ao app: {resposta}")
+
 
         elif topico == "editarUsuario/entrada":
             campo = payload.get("campo")  # ex: "nome", "senha", "idregiao"...

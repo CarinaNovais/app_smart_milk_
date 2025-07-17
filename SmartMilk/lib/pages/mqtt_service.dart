@@ -75,7 +75,10 @@ class MQTTService {
     );
     print('📥 Mensagem MQTT recebida no tópico "$topic"');
     print('💬 Conteúdo da mensagem: $payload');
-    print('🧾 [MQTT] Payload recebido (início): ${payload.substring(0, 120)}');
+    String preview = payload.length > 120 ? payload.substring(0, 120) : payload;
+    print('🧾 [MQTT] Payload recebido (início): $preview');
+
+    //print('🧾 [MQTT] Payload recebido (início): ${payload.substring(0, 120)}');
 
     try {
       final dados = jsonDecode(payload);
