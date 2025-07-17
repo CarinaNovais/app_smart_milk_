@@ -15,6 +15,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   mqtt_client: ^10.8.0
   qr_code_scanner_plus: ^2.0.10+1
+  flutter_image_compress: ^2.4.0
   image_picker: ^1.1.2
  
 
