@@ -5,6 +5,7 @@ import 'package:app_smart_milk/components/home_grid.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
+import 'package:app_smart_milk/components/notifiers.dart';
 
 const Color appBlue = Color(0xFF0097B2);
 late MQTTService mqtt;
@@ -72,6 +73,8 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     setState(() {
       nomeUsuario = prefs.getString('nome') ?? 'Usuário';
     });
+    // 🔔 Atualiza o notifier para refletir no MenuDrawer
+    nomeUsuarioNotifier.value = nomeUsuario;
 
     if (nomeUsuario == 'Usuário') {
       print('⚠️ Nenhum nome encontrado na sessão.');
@@ -92,7 +95,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      endDrawer: const MenuDrawer(),
+      endDrawer: MenuDrawer(),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: HomeGrid(

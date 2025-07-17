@@ -1,13 +1,17 @@
+import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:app_smart_milk/components/notifiers.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'dart:typed_data';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:typed_data/typed_buffers.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 
 const Color appBlue = Color(0xFF0097B2);
 late MQTTService mqtt;
@@ -40,6 +44,8 @@ class _PerfilPage extends State<PerfilPage> {
 
       onFotoEditada: () async {
         final prefs = await SharedPreferences.getInstance();
+        nomeUsuarioNotifier.value = nomeUsuario;
+
         final fotoBase64 = prefs.getString('foto');
 
         if (fotoBase64 != null) {
@@ -47,6 +53,10 @@ class _PerfilPage extends State<PerfilPage> {
             imagemMemoria = base64Decode(fotoBase64);
             imagemPerfil = null;
           });
+        }
+
+        if (fotoBase64 != null && fotoBase64.isNotEmpty) {
+          fotoUsuarioNotifier.value = fotoBase64;
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -65,27 +75,83 @@ class _PerfilPage extends State<PerfilPage> {
     carregarDadosUsuario();
   }
 
+  Future<String> compactarImagem(File imagemOriginal) async {
+    final bytes = await FlutterImageCompress.compressWithFile(
+      imagemOriginal.absolute.path,
+      quality: 60, // Reduz a qualidade para ~60%
+      minWidth: 600, // Reduz resolução
+      minHeight: 600,
+      format: CompressFormat.jpeg,
+    );
+
+    if (bytes == null) throw Exception("Falha na compactação da imagem");
+
+    return base64Encode(bytes);
+  }
+
   Future<void> selecionarEenviarImagem() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      final file = File(pickedFile.path);
-      final bytes = await file.readAsBytes();
-      final base64Image = base64Encode(bytes);
-
-      setState(() {
-        binarioImagem = base64Image; //guarda para envio
-      });
-
-      print("🧪 Foto base64 (início): ${binarioImagem?.substring(0, 100)}");
-
-      print('🖼️ Imagem convertida para base64!');
-    } else {
+    if (pickedFile == null) {
       print('⚠️ Nenhuma imagem selecionada.');
+      return;
     }
 
+    final file = File(pickedFile.path);
+    final bytes = await file.readAsBytes();
+
+    const maxSizeInBytes = 20 * 1024 * 1024; // 20MB
+
+    if (bytes.length > maxSizeInBytes) {
+      print("Arquivo muito grande, escolha outra imagem menor.");
+      // Mostrar diálogo de alerta para o usuário
+      if (context.mounted) {
+        showDialog(
+          context: context,
+          builder:
+              (context) => AlertDialog(
+                title: const Text('Imagem muito grande'),
+                content: const Text(
+                  'A imagem selecionada é muito grande. Por favor, escolha uma imagem com até 20 MB.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+        );
+      }
+      return;
+    }
+
+    // Compactar a imagem e enviar
+    final base64Image = await compactarImagem(file);
+
+    //salva no sharedPreferences
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('foto', base64Image);
+
+    setState(() {
+      binarioImagem = base64Image;
+    });
+
+    setState(() {
+      binarioImagem = base64Image; // guarda para envio
+    });
+
+    if (binarioImagem != null) {
+      String preview =
+          binarioImagem!.length > 100
+              ? binarioImagem!.substring(0, 100)
+              : binarioImagem!;
+      print("🧪 Foto base64 (início): $preview");
+    }
+    print('🖼️ Imagem convertida para base64!');
+
+    //final prefs = await SharedPreferences.getInstance();
     final nome = prefs.getString('nome');
     final idtanque = prefs.getString('idtanque');
 
@@ -114,6 +180,13 @@ class _PerfilPage extends State<PerfilPage> {
       senha = prefs.getString('senha') ?? '--';
       idtanque = prefs.getString('idtanque') ?? '--';
       idregiao = prefs.getString('idregiao') ?? '--';
+
+      final fotoBase64 = prefs.getString('foto');
+      if (fotoBase64 != null && fotoBase64.isNotEmpty) {
+        imagemMemoria = base64Decode(fotoBase64);
+      } else {
+        imagemMemoria = null;
+      }
     });
   }
 
@@ -151,8 +224,8 @@ class _PerfilPage extends State<PerfilPage> {
           ).showSnackBar(const SnackBar(content: Text('Notificações zeradas')));
         },
       ),
-      endDrawer: Drawer(
-        child: ListView(
+      endDrawer: MenuDrawer(),
+      /*child: ListView(
           padding: EdgeInsets.zero,
           children: [
             UserAccountsDrawerHeader(
@@ -194,8 +267,7 @@ class _PerfilPage extends State<PerfilPage> {
               },
             ),
           ],
-        ),
-      ),
+        ),*/
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(

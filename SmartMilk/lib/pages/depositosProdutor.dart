@@ -24,7 +24,7 @@ class _DepositosprodutorPage extends State<DepositosprodutorPage> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      endDrawer: const MenuDrawer(),
+      endDrawer: MenuDrawer(),
       body: const Center(
         child: Text(
           'Conteúdo da tela de depósitos será exibido aqui',

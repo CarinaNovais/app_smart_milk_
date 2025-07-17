@@ -7,7 +7,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:typed_data/typed_buffers.dart';
-
+import 'package:flutter/foundation.dart';
+import 'package:app_smart_milk/components/notifiers.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
@@ -51,13 +52,25 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       onCadastroNegado: (_) {},
       onFotoEditada: () async {
         final prefs = await SharedPreferences.getInstance();
+
         final fotoBase64 = prefs.getString('foto');
+
         if (fotoBase64 != null) {
           setState(() {
             imagemMemoria = base64Decode(fotoBase64);
             imagemPerfil = null;
           });
+
+          // 🔔 Atualiza o notifier da imagem
+          fotoUsuarioNotifier.value = fotoBase64;
         }
+
+        if (fotoBase64 != null && fotoBase64.isNotEmpty) {
+          setState(() {
+            imagemMemoria = base64Decode(fotoBase64);
+          });
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('✅ Foto atualizada com sucesso!')),
         );
@@ -74,6 +87,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
 
   Future<void> carregarDadosUsuario() async {
     final prefs = await SharedPreferences.getInstance();
+
     setState(() {
       nomeController.text = prefs.getString('nome') ?? '';
       senhaController.text = prefs.getString('senha') ?? '';
@@ -81,6 +95,9 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       idRegiaoController.text = prefs.getString('idregiao') ?? '';
       contatoController.text = prefs.getString('contato') ?? '';
     });
+    // Atualiza os notifiers
+    nomeUsuarioNotifier.value = nomeController.text;
+    contatoUsuarioNotifier.value = contatoController.text;
   }
 
   Future<void> selecionarEenviarImagem() async {
@@ -153,28 +170,39 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      endDrawer: const MenuDrawer(),
+      endDrawer: MenuDrawer(),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            GestureDetector(
-              onTap: selecionarEenviarImagem,
-              child: CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.white,
-                backgroundImage:
-                    imagemPerfil != null
-                        ? FileImage(imagemPerfil!)
-                        : (imagemMemoria != null
-                            ? MemoryImage(imagemMemoria!)
-                            : null),
-                child:
-                    (imagemPerfil == null && imagemMemoria == null)
-                        ? const Icon(Icons.person, size: 50, color: appBlue)
-                        : null,
-              ),
+            ValueListenableBuilder<String?>(
+              valueListenable: fotoUsuarioNotifier,
+              builder: (context, fotoBase64, _) {
+                Uint8List? imagemMemoria;
+                if (fotoBase64 != null && fotoBase64.isNotEmpty) {
+                  imagemMemoria = base64Decode(fotoBase64);
+                }
+
+                return GestureDetector(
+                  onTap: selecionarEenviarImagem,
+                  child: CircleAvatar(
+                    radius: 50,
+                    backgroundColor: Colors.white,
+                    backgroundImage:
+                        imagemPerfil != null
+                            ? FileImage(imagemPerfil!)
+                            : (imagemMemoria != null
+                                ? MemoryImage(imagemMemoria)
+                                : null),
+                    child:
+                        (imagemPerfil == null && imagemMemoria == null)
+                            ? const Icon(Icons.person, size: 50, color: appBlue)
+                            : null,
+                  ),
+                );
+              },
             ),
+
             const SizedBox(height: 16),
 
             // Nome
@@ -186,6 +214,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
                 setState(() {
                   if (editandoNome) {
                     atualizarCampo("nome", nomeController.text);
+                    nomeUsuarioNotifier.value = nomeController.text;
                   }
                   editandoNome = !editandoNome;
                 });
@@ -232,6 +261,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
                 setState(() {
                   if (editandoContato) {
                     atualizarCampo("contato", contatoController.text);
+                    contatoUsuarioNotifier.value = contatoController.text;
                   }
                   editandoContato = !editandoContato;
                 });
