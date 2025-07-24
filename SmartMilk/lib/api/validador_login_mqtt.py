@@ -13,7 +13,7 @@ JWT_EXPIRACAO_MINUTOS = 30 #tempo de expiração do token
 # Função para conectar no banco de dados
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.66.11", #ip computador joao
+        host="192.168.66.20", #ip computador joao
         user="root",
         password="root",
         database="mimosa"

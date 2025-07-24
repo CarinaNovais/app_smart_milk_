@@ -35,7 +35,7 @@ Future<AtualizacaoResultado> enviarAtualizacao({
   required String campo,
   required String valor,
 }) async {
-  final uri = Uri.parse('http://192.168.66.16:5000/atualizar');
+  final uri = Uri.parse('http://192.168.66.18:5000/atualizar');
   final body = jsonEncode({
     "nome": nome,
     "idtanque": idtanque,
@@ -76,7 +76,7 @@ Future<LoginResultado> enviarLogin({
   required String senha,
   required int cargo,
 }) async {
-  final uri = Uri.parse('http://192.168.66.16:5000/login'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.18:5000/login'); //ip meu notebook
   final body = jsonEncode({"nome": nome, "senha": senha, "cargo": cargo});
 
   try {
@@ -113,7 +113,7 @@ Future<EnviarFotoResultado> enviarFoto({
   required String fotoBase64,
 }) async {
   final uri = Uri.parse(
-    'http://192.168.66.16:5000/fotoAtualizada',
+    'http://192.168.66.18:5000/fotoAtualizada',
   ); //ip mei notebook
   final body = jsonEncode({
     "nome": nome,
@@ -171,7 +171,7 @@ Future<CadastroResultado> enviarCadastro({
   required String contato,
   String? foto,
 }) async {
-  final uri = Uri.parse('http://192.168.66.16:5000/cadastro'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.18:5000/cadastro'); //ip meu notebook
   final body = jsonEncode({
     "nome": nome,
     "senha": senha,

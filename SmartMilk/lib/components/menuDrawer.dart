@@ -105,7 +105,9 @@ class _MenuDrawerState extends State<MenuDrawer> {
             title: const Text('Sair'),
             onTap: () async {
               await mqtt.logout();
-              Navigator.pushReplacementNamed(context, '/login');
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear();
+              Navigator.pushReplacementNamed(context, '/');
             },
           ),
         ],
