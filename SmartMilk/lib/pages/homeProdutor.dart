@@ -42,9 +42,9 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       legenda: 'Status Tanque',
     ),
     GridItem(
-      imagePath: 'lib/images/qrCode.png',
-      route: '/qrCode',
-      legenda: 'Qr Code',
+      imagePath: 'lib/images/semFuncao.png',
+      route: '/',
+      legenda: 'Sem Função',
     ),
     GridItem(
       imagePath: 'lib/images/monitoramentoVacas.png',

@@ -16,3 +16,5 @@ final idRegiaoUsuarioNotifier = ValueNotifier<String>('id regiao nao definido');
 final placaUsuarioNotifier = ValueNotifier<String>('placa nao definida');
 
 final senhaUsuarioNotifier = ValueNotifier<String>('senha nao definida');
+
+final fotoUsuarioNotifier = ValueNotifier<String>('foto nao definida');
