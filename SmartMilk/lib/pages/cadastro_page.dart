@@ -3,15 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:app_smart_milk/components/my_button.dart';
 import 'package:app_smart_milk/components/cadastro_form.dart';
 import 'dart:convert';
-//import 'dart:typed_data';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:typed_data/typed_buffers.dart';
 
-//import 'dart:io';
-
 class CadastroPage extends StatefulWidget {
-  //final int cargo;
-
   const CadastroPage({super.key});
 
   @override
@@ -34,7 +29,8 @@ class _CadastroPageState extends State<CadastroPage> {
   @override
   void initState() {
     super.initState();
-    mqtt = MQTTService(
+    mqtt = MQTTService();
+    mqtt.configurarCallbacks(
       onLoginAceito: () {},
       onLoginNegado: (_) {},
       onCadastroAceito: () {

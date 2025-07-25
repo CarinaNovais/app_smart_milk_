@@ -28,6 +28,8 @@ class _PerfilPage extends State<PerfilPage> {
   String idtanque = '';
   String idregiao = '';
   String senha = '';
+  int? cargo;
+  String placa = '';
   bool senhaVisivel = false;
   File? imagemPerfil;
   Uint8List? imagemMemoria;
@@ -36,7 +38,9 @@ class _PerfilPage extends State<PerfilPage> {
   @override
   void initState() {
     super.initState();
-    mqtt = MQTTService(
+    mqtt = MQTTService();
+
+    mqtt.configurarCallbacks(
       onLoginAceito: () {},
       onLoginNegado: (erro) {},
       onCadastroAceito: () {},
@@ -178,10 +182,16 @@ class _PerfilPage extends State<PerfilPage> {
     setState(() {
       nomeUsuario = prefs.getString('nome') ?? 'Usuário';
       senha = prefs.getString('senha') ?? '--';
-      idtanque = prefs.getString('idtanque') ?? '--';
-      idregiao = prefs.getString('idregiao') ?? '--';
+      cargo = prefs.getInt('cargo');
+      idregiao = (cargo == 0) ? (prefs.getString('idregiao') ?? '--') : '--';
+      idtanque = (cargo == 0) ? (prefs.getString('idtanque') ?? '--') : '--';
+      placa =
+          (cargo == 2)
+              ? (prefs.getString('placa') ?? 'Sem Placa')
+              : 'Sem Placa';
 
       final fotoBase64 = prefs.getString('foto');
+
       if (fotoBase64 != null && fotoBase64.isNotEmpty) {
         imagemMemoria = base64Decode(fotoBase64);
       } else {
@@ -207,10 +217,88 @@ class _PerfilPage extends State<PerfilPage> {
     );
   }
 
+  Widget _tileSenha() {
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text(
+        'Senha',
+        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+      ),
+      subtitle: Text(
+        senhaVisivel ? senha : '••••••••',
+        style: const TextStyle(fontSize: 16, color: Colors.white),
+      ),
+      trailing: IconButton(
+        icon: Icon(
+          senhaVisivel ? Icons.visibility_off : Icons.visibility,
+          color: Colors.white,
+        ),
+        onPressed: () => setState(() => senhaVisivel = !senhaVisivel),
+      ),
+    );
+  }
+
+  Widget _perfilComum() {
+    return Column(
+      children: [
+        CircleAvatar(
+          radius: 50,
+          backgroundColor: Colors.white,
+          backgroundImage:
+              imagemPerfil != null
+                  ? FileImage(imagemPerfil!)
+                  : (imagemMemoria != null
+                      ? MemoryImage(imagemMemoria!)
+                      : null),
+          child:
+              (imagemPerfil == null && imagemMemoria == null)
+                  ? const Icon(Icons.person, size: 50, color: appBlue)
+                  : null,
+        ),
+        const SizedBox(height: 12),
+        ElevatedButton.icon(
+          onPressed: selecionarEenviarImagem,
+          icon: const Icon(Icons.photo_camera),
+          label: const Text('Mudar foto de perfil'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.white,
+            foregroundColor: appBlue,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _perfilProdutor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _infoTile('Nome', nomeUsuario),
+        _infoTile('ID do Tanque', idtanque),
+        _infoTile('ID da Região', idregiao),
+        _tileSenha(),
+      ],
+    );
+  }
+
+  Widget _perfilColetor() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _infoTile('Nome do Coletor', nomeUsuario),
+        _infoTile('Placa do Caminhão', placa),
+        _tileSenha(),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0097B2),
+      backgroundColor: appBlue,
       appBar: Navbar(
         title: 'Perfil',
         style: const TextStyle(
@@ -224,7 +312,44 @@ class _PerfilPage extends State<PerfilPage> {
           ).showSnackBar(const SnackBar(content: Text('Notificações zeradas')));
         },
       ),
-      endDrawer: MenuDrawer(),
+      endDrawer: MenuDrawer(mqtt: mqtt),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            _perfilComum(),
+            const SizedBox(height: 24),
+            if (cargo == 0) _perfilProdutor(),
+            if (cargo == 2) _perfilColetor(),
+            if (cargo != 0 && cargo != 2)
+              const Text(
+                "⚠️ Cargo não reconhecido.",
+                style: TextStyle(color: Colors.white),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+  // @override
+  // Widget build(BuildContext context) {
+  //   return Scaffold(
+  //     backgroundColor: const Color(0xFF0097B2),
+  //     appBar: Navbar(
+  //       title: 'Perfil',
+  //       style: const TextStyle(
+  //         color: Colors.white,
+  //         fontSize: 20,
+  //         fontWeight: FontWeight.bold,
+  //       ),
+  //       onNotificationPressed: () {
+  //         ScaffoldMessenger.of(
+  //           context,
+  //         ).showSnackBar(const SnackBar(content: Text('Notificações zeradas')));
+  //       },
+  //     ),
+  //     endDrawer: MenuDrawer(mqtt: mqtt),
       /*child: ListView(
           padding: EdgeInsets.zero,
           children: [
@@ -268,89 +393,90 @@ class _PerfilPage extends State<PerfilPage> {
             ),
           ],
         ),*/
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            CircleAvatar(
-              radius: 50,
-              backgroundColor: Colors.white,
-              backgroundImage:
-                  imagemPerfil != null
-                      ? FileImage(imagemPerfil!)
-                      : (imagemMemoria != null
-                          ? MemoryImage(imagemMemoria!)
-                          : null),
-              child:
-                  (imagemPerfil == null && imagemMemoria == null)
-                      ? const Icon(Icons.person, size: 50, color: appBlue)
-                      : null,
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton.icon(
-              onPressed: selecionarEenviarImagem,
-              icon: const Icon(Icons.photo_camera),
-              label: const Text('Mudar foto de perfil'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: appBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-            if (binarioImagem != null) ...[
-              const SizedBox(height: 20),
-              const Text(
-                'Imagem em Binário:',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: SelectableText(
-                    binarioImagem!,
-                    style: const TextStyle(
-                      fontFamily: 'Courier',
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+//       body: Padding(
+//         padding: const EdgeInsets.all(16.0),
+//         child: Column(
+//           children: [
+//             CircleAvatar(
+//               radius: 50,
+//               backgroundColor: Colors.white,
+//               backgroundImage:
+//                   imagemPerfil != null
+//                       ? FileImage(imagemPerfil!)
+//                       : (imagemMemoria != null
+//                           ? MemoryImage(imagemMemoria!)
+//                           : null),
+//               child:
+//                   (imagemPerfil == null && imagemMemoria == null)
+//                       ? const Icon(Icons.person, size: 50, color: appBlue)
+//                       : null,
+//             ),
+//             const SizedBox(height: 12),
+//             ElevatedButton.icon(
+//               onPressed: selecionarEenviarImagem,
+//               icon: const Icon(Icons.photo_camera),
+//               label: const Text('Mudar foto de perfil'),
+//               style: ElevatedButton.styleFrom(
+//                 backgroundColor: Colors.white,
+//                 foregroundColor: appBlue,
+//                 shape: RoundedRectangleBorder(
+//                   borderRadius: BorderRadius.circular(8),
+//                 ),
+//               ),
+//             ),
+//             if (binarioImagem != null) ...[
+//               const SizedBox(height: 20),
+//               const Text(
+//                 'Imagem em Binário:',
+//                 style: TextStyle(
+//                   color: Colors.white,
+//                   fontWeight: FontWeight.bold,
+//                 ),
+//               ),
+//               const SizedBox(height: 8),
+//               Expanded(
+//                 child: SingleChildScrollView(
+//                   child: SelectableText(
+//                     binarioImagem!,
+//                     style: const TextStyle(
+//                       fontFamily: 'Courier',
+//                       color: Colors.white,
+//                       fontSize: 10,
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ],
 
-            const SizedBox(height: 24),
-            _infoTile('Nome', nomeUsuario),
-            _infoTile('ID do Tanque', idtanque),
-            _infoTile('ID da Região', idregiao),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'Senha',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              subtitle: Text(
-                senhaVisivel ? senha : '••••••••',
-                style: const TextStyle(fontSize: 16, color: Colors.white),
-              ),
-              trailing: IconButton(
-                icon: Icon(
-                  senhaVisivel ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.white,
-                ),
-                onPressed: () => setState(() => senhaVisivel = !senhaVisivel),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
+//             const SizedBox(height: 24),
+
+//             _infoTile('Nome', nomeUsuario),
+//             _infoTile('ID do Tanque', idtanque),
+//             _infoTile('ID da Região', idregiao),
+//             ListTile(
+//               contentPadding: EdgeInsets.zero,
+//               title: const Text(
+//                 'Senha',
+//                 style: TextStyle(
+//                   fontWeight: FontWeight.bold,
+//                   color: Colors.white,
+//                 ),
+//               ),
+//               subtitle: Text(
+//                 senhaVisivel ? senha : '••••••••',
+//                 style: const TextStyle(fontSize: 16, color: Colors.white),
+//               ),
+//               trailing: IconButton(
+//                 icon: Icon(
+//                   senhaVisivel ? Icons.visibility_off : Icons.visibility,
+//                   color: Colors.white,
+//                 ),
+//                 onPressed: () => setState(() => senhaVisivel = !senhaVisivel),
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//     );
+//   }
+// }

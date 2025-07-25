@@ -5,20 +5,22 @@ import 'package:app_smart_milk/components/home_grid.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
-import 'package:app_smart_milk/components/notifiers.dart';
 
 const Color appBlue = Color(0xFF0097B2);
 late MQTTService mqtt;
 
-class HomeProdutorPage extends StatefulWidget {
-  const HomeProdutorPage({super.key});
+class HomeColetorPage extends StatefulWidget {
+  const HomeColetorPage({super.key});
 
   @override
-  State<HomeProdutorPage> createState() => _HomeProdutorPageState();
+  State<HomeColetorPage> createState() => _HomeColetorPageState();
 }
 
-class _HomeProdutorPageState extends State<HomeProdutorPage> {
+class _HomeColetorPageState extends State<HomeColetorPage> {
   String nomeUsuario = '';
+  String? contatoUsuario = '';
+  String fotoBase64 = '';
+  int? cargoUsuario;
 
   final List<GridItem> items = [
     GridItem(
@@ -32,14 +34,14 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       legenda: 'Avisos',
     ),
     GridItem(
-      imagePath: 'lib/images/historicoDepositos.png',
-      route: '/depositosProdutor',
-      legenda: 'Histórico Depósitos',
+      imagePath: 'lib/images/historicoColetas.png',
+      route: '/page3',
+      legenda: 'Histórico Coletas',
     ),
     GridItem(
-      imagePath: 'lib/images/statusTanque.png',
+      imagePath: 'lib/images/semFuncao.png',
       route: '/dadosTanque',
-      legenda: 'Status Tanque',
+      legenda: 'Sem Funcao',
     ),
     GridItem(
       imagePath: 'lib/images/qrCode.png',
@@ -47,9 +49,9 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       legenda: 'Qr Code',
     ),
     GridItem(
-      imagePath: 'lib/images/monitoramentoVacas.png',
+      imagePath: 'lib/images/semFuncao.png',
       route: '/page6',
-      legenda: 'Monitoramento Vacas',
+      legenda: 'Sem Funcao',
     ),
   ];
 
@@ -58,6 +60,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     super.initState();
     carregarDadosUsuario();
     mqtt = MQTTService();
+
     mqtt.configurarCallbacks(
       onLoginAceito: () {},
       onLoginNegado: (_) {},
@@ -70,16 +73,16 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
 
   Future<void> carregarDadosUsuario() async {
     final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      nomeUsuario = prefs.getString('nome') ?? 'Usuário';
-    });
-    // 🔔 Atualiza o notifier para refletir no MenuDrawer
-    nomeUsuarioNotifier.value = nomeUsuario;
+    final nome = prefs.getString('nome') ?? 'Usuário';
 
-    if (nomeUsuario == 'Usuário') {
+    setState(() {
+      nomeUsuario = nome;
+    });
+
+    if (nome == 'Usuário') {
       print('⚠️ Nenhum nome encontrado na sessão.');
     } else {
-      print('✅ Nome do usuário carregado: $nomeUsuario');
+      print('✅ Nome do usuário carregado: $nome');
     }
   }
 
@@ -96,6 +99,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
         ),
       ),
       endDrawer: MenuDrawer(mqtt: mqtt),
+
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: HomeGrid(

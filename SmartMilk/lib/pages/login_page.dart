@@ -28,7 +28,9 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    mqtt = MQTTService(
+    mqtt = MQTTService();
+
+    mqtt.configurarCallbacks(
       onLoginAceito: () async {
         print('Callback onLoginAceito chamado');
 
@@ -42,7 +44,11 @@ class _LoginPageState extends State<LoginPage> {
               _tokenRecebido = token;
             });
             // 🔁 Faz o redirecionamento após login aceito
-            Navigator.pushReplacementNamed(context, '/homeProdutor');
+            if (widget.cargo == 0) {
+              Navigator.pushReplacementNamed(context, '/homeProdutor');
+            } else {
+              Navigator.pushReplacementNamed(context, '/homeColetor');
+            }
           }
         } else {
           print('⚠️ Token não encontrado no SharedPreferences');

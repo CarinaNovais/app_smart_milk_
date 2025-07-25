@@ -15,7 +15,7 @@ class IndexPage extends StatelessWidget {
   void acaoBotaoColetor(BuildContext context) {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => LoginPage(cargo: 1)),
+      MaterialPageRoute(builder: (context) => LoginPage(cargo: 2)),
     );
   }
 

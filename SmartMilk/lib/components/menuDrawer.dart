@@ -6,10 +6,19 @@ import 'package:app_smart_milk/components/notifiers.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 
 const Color appBlue = Color(0xFF0097B2);
-late MQTTService mqtt;
+//late MQTTService mqtt;
 
 class MenuDrawer extends StatefulWidget {
-  const MenuDrawer({super.key});
+  // final String nomeUsuario;
+  // final String? fotoBase64;
+  final MQTTService mqtt;
+
+  MenuDrawer({
+    Key? key,
+    // required this.nomeUsuario,
+    // this.fotoBase64,
+    required this.mqtt,
+  }) : super(key: key);
 
   @override
   State<MenuDrawer> createState() => _MenuDrawerState();
@@ -17,6 +26,7 @@ class MenuDrawer extends StatefulWidget {
 
 class _MenuDrawerState extends State<MenuDrawer> {
   bool dadosCarregados = false;
+  int? cargoUsuario;
 
   @override
   void didChangeDependencies() {
@@ -33,12 +43,14 @@ class _MenuDrawerState extends State<MenuDrawer> {
     final nome = prefs.getString('nome') ?? 'Usuário';
     final contato = prefs.getString('contato') ?? 'Contato não definido';
     final fotoBase64 = prefs.getString('foto');
+    final cargo = prefs.getInt('cargo');
 
     nomeUsuarioNotifier.value = nome;
     contatoUsuarioNotifier.value = contato;
     if (fotoBase64 != null && fotoBase64.isNotEmpty) {
       fotoUsuarioNotifier.value = fotoBase64;
     }
+    cargoUsuario = cargo;
   }
 
   @override
@@ -87,8 +99,15 @@ class _MenuDrawerState extends State<MenuDrawer> {
           ListTile(
             leading: const Icon(Icons.home),
             title: const Text('Início'),
-            onTap: () => Navigator.of(context).pushNamed('/homeProdutor'),
+            onTap: () {
+              if (cargoUsuario == 0) {
+                Navigator.of(context).pushNamed('/homeProdutor');
+              } else if (cargoUsuario == 2) {
+                Navigator.of(context).pushNamed('/homeColetor');
+              }
+            },
           ),
+
           ListTile(
             leading: const Icon(Icons.person),
             title: const Text('Perfil'),
@@ -104,7 +123,7 @@ class _MenuDrawerState extends State<MenuDrawer> {
             leading: const Icon(Icons.logout),
             title: const Text('Sair'),
             onTap: () async {
-              await mqtt.logout();
+              await widget.mqtt.logout();
               final prefs = await SharedPreferences.getInstance();
               await prefs.clear();
               Navigator.pushReplacementNamed(context, '/');

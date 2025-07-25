@@ -14,7 +14,7 @@ import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 
 const Color appBlue = Color(0xFF0097B2);
-late MQTTService mqtt;
+//late MQTTService mqtt;
 
 class ConfiguracoesPage extends StatefulWidget {
   const ConfiguracoesPage({super.key});
@@ -29,23 +29,30 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
   bool editandoIdTanque = false;
   bool editandoIdRegiao = false;
   bool editandoContato = false;
+  bool editandoPlaca = false;
 
   final TextEditingController nomeController = TextEditingController();
   final TextEditingController senhaController = TextEditingController();
   final TextEditingController idTanqueController = TextEditingController();
   final TextEditingController idRegiaoController = TextEditingController();
   final TextEditingController contatoController = TextEditingController();
+  final TextEditingController placaController = TextEditingController();
 
   bool senhaVisivel = false;
   File? imagemPerfil;
   Uint8List? imagemMemoria;
   String? binarioImagem;
 
+  int? cargo;
+  String nomeUsuario = '';
+  //String fotoBase64 = '';
+  late MQTTService mqtt;
+
   @override
   void initState() {
     super.initState();
-
-    mqtt = MQTTService(
+    mqtt = MQTTService();
+    mqtt.configurarCallbacks(
       onLoginAceito: () {},
       onLoginNegado: (_) {},
       onCadastroAceito: () {},
@@ -80,7 +87,33 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
           SnackBar(content: Text('❌ Erro ao atualizar foto: $erro')),
         );
       },
+      onCampoAtualizado: (campo, valor) async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(campo, valor);
+
+        switch (campo) {
+          case 'nome':
+            nomeUsuarioNotifier.value = valor;
+            break;
+          case 'contato':
+            contatoUsuarioNotifier.value = valor;
+            break;
+          case 'idtanque':
+            idtanqueUsuarioNotifier.value = valor;
+            break;
+          case 'idregiao':
+            idRegiaoUsuarioNotifier.value = valor;
+            break;
+          case 'placa':
+            placaUsuarioNotifier.value = valor;
+            break;
+          case 'senha':
+            senhaUsuarioNotifier.value = valor;
+            break;
+        }
+      },
     );
+
     mqtt.inicializar();
     carregarDadosUsuario();
   }
@@ -94,6 +127,8 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       idTanqueController.text = prefs.getString('idtanque') ?? '';
       idRegiaoController.text = prefs.getString('idregiao') ?? '';
       contatoController.text = prefs.getString('contato') ?? '';
+      placaController.text = prefs.getString('placa') ?? '';
+      cargo = prefs.getInt('cargo');
     });
     // Atualiza os notifiers
     nomeUsuarioNotifier.value = nomeController.text;
@@ -134,20 +169,34 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
     final prefs = await SharedPreferences.getInstance();
     final nome = prefs.getString('nome');
     final idtanque = prefs.getString('idtanque');
+    final cargo = prefs.getInt('cargo');
 
-    if (nome == null || idtanque == null) {
+    if (nome == null || cargo == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("⚠️ Dados do usuário ausentes")),
       );
       return;
     }
 
-    final dados = {
-      "nome": nome,
-      "idtanque": idtanque,
-      "campo": campo,
-      "valor": valor,
-    };
+    Map<String, dynamic> dados;
+
+    if (cargo == 0) {
+      dados = {
+        "nome": nome,
+        "idtanque": idtanque,
+        "campo": campo,
+        "valor": valor,
+        "cargo": cargo,
+      };
+    } else if (cargo == 2) {
+      dados = {"nome": nome, "campo": campo, "valor": valor, "cargo": cargo};
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("⚠️ Cargo não suportado")));
+      return;
+    }
+
     final mensagem = jsonEncode(dados);
     final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
 
@@ -156,6 +205,21 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       MqttQos.atMostOnce,
       buffer,
     );
+  }
+
+  Future<void> salvarCampo({
+    required String campo,
+    required String valor,
+    required VoidCallback? onNotifierUpdate,
+  }) async {
+    atualizarCampo(campo, valor);
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(campo, valor);
+
+    if (onNotifierUpdate != null) {
+      onNotifierUpdate();
+    }
   }
 
   @override
@@ -170,7 +234,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      endDrawer: MenuDrawer(),
+      endDrawer: MenuDrawer(mqtt: mqtt),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -213,43 +277,102 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
               onPressed: () {
                 setState(() {
                   if (editandoNome) {
-                    atualizarCampo("nome", nomeController.text);
-                    nomeUsuarioNotifier.value = nomeController.text;
+                    salvarCampo(
+                      campo: "nome",
+                      valor: nomeController.text,
+                      onNotifierUpdate:
+                          () => nomeUsuarioNotifier.value = nomeController.text,
+                    );
                   }
                   editandoNome = !editandoNome;
                 });
               },
+
+              // onPressed: () {
+              //   setState(() {
+              //     if (editandoNome) {
+              //       salvarCampo(
+              //         campo:"nome",
+              //         valor: nomeController.text,
+              //         onNotifierUpdate()=>
+              //       //atualizarCampo("nome", nomeController.text);
+              //       //prefs.setString('nome', nomeController.text);
+              //       //nomeUsuarioNotifier.value = nomeController.text;
+              //         nomeUsuarioNotifier.value = nomeController.text,
+              //       );
+              //     }
+              //     editandoNome = !editandoNome;
+              //   });
+              // },
             ),
 
-            // ID Tanque
-            buildEditableField(
-              controller: idTanqueController,
-              label: 'ID do Tanque',
-              editando: editandoIdTanque,
-              onPressed: () {
-                setState(() {
-                  if (editandoIdTanque) {
-                    atualizarCampo("idtanque", idTanqueController.text);
-                  }
-                  editandoIdTanque = !editandoIdTanque;
-                });
-              },
-            ),
-
-            // ID Região
-            buildEditableField(
-              controller: idRegiaoController,
-              label: 'ID da Região',
-              editando: editandoIdRegiao,
-              onPressed: () {
-                setState(() {
-                  if (editandoIdRegiao) {
-                    atualizarCampo("idregiao", idRegiaoController.text);
-                  }
-                  editandoIdRegiao = !editandoIdRegiao;
-                });
-              },
-            ),
+            //campos condicionais
+            //tanque
+            if (cargo == 0) ...[
+              buildEditableField(
+                controller: idTanqueController,
+                label: 'ID do Tanque',
+                editando: editandoIdTanque,
+                onPressed: () {
+                  setState(() {
+                    if (editandoIdTanque) {
+                      salvarCampo(
+                        campo: "idtanque",
+                        valor: nomeController.text,
+                        onNotifierUpdate:
+                            () =>
+                                idtanqueUsuarioNotifier.value =
+                                    idTanqueController.text,
+                      );
+                    }
+                    editandoIdTanque = !editandoIdTanque;
+                  });
+                },
+              ),
+              //regiao
+              buildEditableField(
+                controller: idRegiaoController,
+                label: 'ID da Região',
+                editando: editandoIdRegiao,
+                onPressed: () {
+                  setState(() {
+                    if (editandoIdRegiao) {
+                      salvarCampo(
+                        campo: "idregiao",
+                        valor: idRegiaoController.text,
+                        onNotifierUpdate:
+                            () =>
+                                idRegiaoUsuarioNotifier.value =
+                                    idRegiaoController.text,
+                      );
+                    }
+                    editandoIdRegiao = !editandoIdRegiao;
+                  });
+                },
+              ),
+              //placa
+            ] else if (cargo == 2) ...[
+              buildEditableField(
+                controller: placaController,
+                label: 'Placa do Veículo',
+                editando: editandoPlaca,
+                onPressed: () {
+                  setState(() {
+                    if (editandoPlaca) {
+                      salvarCampo(
+                        campo: "placa",
+                        valor: placaController.text,
+                        onNotifierUpdate:
+                            () =>
+                                placaUsuarioNotifier.value =
+                                    placaController.text,
+                      );
+                    }
+                    editandoPlaca = !editandoPlaca;
+                  });
+                },
+              ),
+            ],
 
             // Contato
             buildEditableField(
@@ -260,8 +383,14 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
               onPressed: () {
                 setState(() {
                   if (editandoContato) {
-                    atualizarCampo("contato", contatoController.text);
-                    contatoUsuarioNotifier.value = contatoController.text;
+                    salvarCampo(
+                      campo: "contato",
+                      valor: contatoController.text,
+                      onNotifierUpdate:
+                          () =>
+                              contatoUsuarioNotifier.value =
+                                  contatoController.text,
+                    );
                   }
                   editandoContato = !editandoContato;
                 });
@@ -301,7 +430,14 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
                   onPressed: () {
                     setState(() {
                       if (editandoSenha) {
-                        atualizarCampo("senha", senhaController.text);
+                        salvarCampo(
+                          campo: "senha",
+                          valor: senhaController.text,
+                          onNotifierUpdate:
+                              () =>
+                                  senhaUsuarioNotifier.value =
+                                      senhaController.text,
+                        );
                       }
                       editandoSenha = !editandoSenha;
                     });

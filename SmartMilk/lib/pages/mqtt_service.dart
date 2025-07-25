@@ -6,25 +6,58 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 //import 'package:app_smart_milk/pages/envio_service.dart';
 
 class MQTTService {
-  final Function onLoginAceito;
-  final Function(String) onLoginNegado;
-  final Function onCadastroAceito;
-  final Function(String) onCadastroNegado;
-  final Function(Map<String, dynamic>)? onDadosTanque;
-  final Function()? onFotoEditada;
-  final Function(String)? onErroFoto;
+  // final Function onLoginAceito;
+  // final Function(String) onLoginNegado;
+  // final Function onCadastroAceito;
+  // final Function(String) onCadastroNegado;
+  // final Function(Map<String, dynamic>)? onDadosTanque;
+  // final Function()? onFotoEditada;
+  // final Function(String)? onErroFoto;
 
-  MQTTService({
-    required this.onLoginAceito,
-    required this.onLoginNegado,
-    required this.onCadastroAceito,
-    required this.onCadastroNegado,
-    this.onDadosTanque,
-    this.onFotoEditada,
-    this.onErroFoto,
-  });
+  // MQTTService({
+  //   required this.onLoginAceito,
+  //   required this.onLoginNegado,
+  //   required this.onCadastroAceito,
+  //   required this.onCadastroNegado,
+  //   this.onDadosTanque,
+  //   this.onFotoEditada,
+  //   this.onErroFoto,
+
+  static final MQTTService _instance = MQTTService._internal();
+  factory MQTTService() => _instance;
+
+  MQTTService._internal();
+
+  late Function onLoginAceito;
+  late Function(String) onLoginNegado;
+  late Function onCadastroAceito;
+  late Function(String) onCadastroNegado;
+  Function(Map<String, dynamic>)? onDadosTanque;
+  Function()? onFotoEditada;
+  Function(String)? onErroFoto;
 
   late MqttClient client;
+  late Function(String campo, String valor) onCampoAtualizado;
+
+  void configurarCallbacks({
+    required Function onLoginAceito,
+    required Function(String) onLoginNegado,
+    required Function onCadastroAceito,
+    required Function(String) onCadastroNegado,
+    Function(Map<String, dynamic>)? onDadosTanque,
+    Function()? onFotoEditada,
+    Function(String)? onErroFoto,
+    Function(String campo, String valor)? onCampoAtualizado,
+  }) {
+    this.onLoginAceito = onLoginAceito;
+    this.onLoginNegado = onLoginNegado;
+    this.onCadastroAceito = onCadastroAceito;
+    this.onCadastroNegado = onCadastroNegado;
+    this.onDadosTanque = onDadosTanque;
+    this.onFotoEditada = onFotoEditada;
+    this.onErroFoto = onErroFoto;
+    if (onCampoAtualizado != null) this.onCampoAtualizado = onCampoAtualizado;
+  }
 
   Future<void> inicializar() async {
     client = MqttServerClient('192.168.66.50', 'app_smart_milk_cliente01');
@@ -55,6 +88,11 @@ class MQTTService {
         client.subscribe('tanque/resposta', MqttQos.atMostOnce);
         client.subscribe('fotoAtualizada/resultado', MqttQos.atMostOnce);
         client.subscribe('editarUsuario/resultado', MqttQos.atMostOnce);
+        client.subscribe(
+          'tanqueIdentificado/resultado',
+          MqttQos.atMostOnce,
+        ); //qrcode
+        client.subscribe('historicoColeta/resultado', MqttQos.atMostOnce);
 
         client.updates?.listen(_onMessageReceived);
       } else {
@@ -92,8 +130,21 @@ class MQTTService {
             await prefs.setString('expira_em', dados['expira_em']);
             await prefs.setString('nome', dados['nome']);
             await prefs.setString('senha', dados['senha'].toString());
-            await prefs.setString('idtanque', dados['idtanque'].toString());
-            await prefs.setString('idregiao', dados['idregiao'].toString());
+
+            if (dados.containsKey('cargo') && dados['cargo'] != null) {
+              final cargo = dados['cargo'];
+              await prefs.setInt('cargo', cargo);
+
+              if (cargo == 0) {
+                await prefs.setString('idtanque', dados['idtanque'].toString());
+                await prefs.setString('idregiao', dados['idregiao'].toString());
+              } else if (cargo == 2) {
+                await prefs.setString('placa', dados['placa'] ?? 'Sem Placa');
+              }
+            } else {
+              print('⚠️ Campo "cargo" ausente no JSON. Login parcial.');
+              await prefs.setInt('cargo', -1);
+            }
 
             print('✅ Token e dados do usuário salvos com sucesso.');
             onLoginAceito();
@@ -127,10 +178,31 @@ class MQTTService {
         } else if (topic == 'editarUsuario/resultado') {
           if (dados['status'] == 'aceito') {
             print('✅ Campo atualizado com sucesso');
-            // onCampoAtualizado?.call(dados['mensagem']);
+            final campo = dados['campo'] ?? '';
+            final valor = dados['valor'] ?? '';
+            if (campo.isNotEmpty && valor.isNotEmpty) {
+              onCampoAtualizado(campo, valor);
+            } else {
+              print('⚠️ Resposta de atualização sem campo ou valor.');
+            }
           } else {
             print('❌ Falha ao atualizar campo: ${dados['mensagem']}');
             // Ou onErroCampo?.call(dados['mensagem']);
+          }
+        } else if (topic == 'tanqueIdentificado/resultado') {
+          if (dados['status'] == 'ok') {
+            print('📷 QR Code identificado com sucesso!');
+            //onTanqueIdentificado?.call(dados['dados']);
+            onDadosTanque?.call(dados['dados']);
+          } else {
+            print('❌ Falha ao identificar o QR Code: ${dados['mensagem']}');
+          }
+        } else if (topic == 'historicoColeta/resultado') {
+          //arrumar
+          if (dados['status'] == 'aceito') {
+            print('✅ coleta enviada');
+          } else {
+            print('❌ coleta nao enviada!');
           }
         }
       } else {
@@ -141,25 +213,43 @@ class MQTTService {
     }
   }
 
-  Future<void> buscarDadosTanque() async {
+  Future<void> buscarDadosTanque({
+    String? nome,
+    String? idtanque,
+    String? idregiao,
+    int? cargo,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
-    final nome = prefs.getString('nome');
 
-    if (nome == null) {
-      print('⚠️ Nome do usuário não encontrado no SharedPreferences');
-      return;
+    nome ??= prefs.getString('nome') ?? '';
+    cargo ??= prefs.getInt('cargo');
+    idtanque ??= prefs.getString('idtanque') ?? '';
+    idregiao ??= prefs.getString('idregiao') ?? '';
+
+    final dados = {
+      "nome": nome,
+      "idtanque": idtanque,
+      "idregiao": idregiao,
+      "cargo": cargo,
+    };
+
+    if (cargo == 0) {
+      // 👨‍🌾 Produtor
+      client.publishMessage(
+        'tanque/buscar',
+        MqttQos.atLeastOnce,
+        MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+      );
+    } else if (cargo == 2) {
+      // 🚛 Coletor
+      client.publishMessage(
+        'tanqueIdentificado/entrada',
+        MqttQos.atLeastOnce,
+        MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+      );
+    } else {
+      print("⚠️ Cargo não reconhecido: $cargo");
     }
-
-    final msg = jsonEncode({"nome": nome});
-    final builder = MqttClientPayloadBuilder()..addString(msg);
-    client.publishMessage(
-      "tanque/buscar",
-      MqttQos.atMostOnce,
-      builder.payload!,
-    );
-    client.subscribe("tanque/resposta", MqttQos.atMostOnce);
-
-    print('📤 Mensagem enviada para "tanque/buscar": $msg');
   }
 
   Future<void> logout() async {

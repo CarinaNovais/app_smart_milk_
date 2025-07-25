@@ -1,12 +1,19 @@
-import 'package:app_smart_milk/pages/cadastro_page.dart';
-import 'package:app_smart_milk/pages/homeProdutor.dart';
-import 'package:app_smart_milk/pages/tanque_usuario.dart';
+//gerais
 import 'package:flutter/material.dart';
+import 'package:app_smart_milk/pages/cadastro_page.dart';
 import 'package:app_smart_milk/pages/index.dart';
 import 'package:app_smart_milk/pages/login_page.dart';
 import 'package:app_smart_milk/pages/perfil.dart';
 import 'package:app_smart_milk/pages/configuracoes.dart';
+import 'package:app_smart_milk/pages/resultadoQrCode.dart';
+//produtor
+import 'package:app_smart_milk/pages/homeProdutor.dart';
+import 'package:app_smart_milk/pages/tanque_usuario.dart';
 import 'package:app_smart_milk/pages/depositosProdutor.dart';
+
+//coletor
+import 'package:app_smart_milk/pages/qrCode_page.dart';
+import 'package:app_smart_milk/pages/homeColetor.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +39,6 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       initialRoute: '/', // Define a página inicial
       routes: {
-        // '/': (context) => QRViewExample(), // Página inicial
         '/': (context) => IndexPage(), // Página inicial
         '/login': (context) => LoginPage(cargo: 1),
         '/homeProdutor': (context) => HomeProdutorPage(),
@@ -41,6 +47,9 @@ class _MyAppState extends State<MyApp> {
         '/perfil': (context) => PerfilPage(),
         '/configuracoes': (context) => ConfiguracoesPage(),
         '/depositosProdutor': (context) => DepositosprodutorPage(),
+        '/qrCode': (context) => QRViewExample(),
+        '/homeColetor': (context) => HomeColetorPage(),
+        '/resultadoQrCode': (context) => ResultadoQrCodePage(),
       },
     );
   }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginResultado {
   final bool sucesso;
@@ -29,18 +30,29 @@ class AtualizacaoResultado {
   AtualizacaoResultado({required this.sucesso, required this.mensagem});
 }
 
+class HistoricoColetaResultado {
+  final bool sucesso;
+  final String mensagem;
+
+  HistoricoColetaResultado({required this.sucesso, required this.mensagem});
+}
+
 Future<AtualizacaoResultado> enviarAtualizacao({
   required String nome,
-  required String idtanque,
   required String campo,
   required String valor,
 }) async {
-  final uri = Uri.parse('http://192.168.66.18:5000/atualizar');
+  final prefs = await SharedPreferences.getInstance();
+  final idtanque = prefs.getString('idtanque') ?? '';
+  final cargo = prefs.getInt('cargo');
+
+  final uri = Uri.parse('http://192.168.66.13:5000/editarUsuario');
   final body = jsonEncode({
     "nome": nome,
     "idtanque": idtanque,
     "campo": campo,
     "valor": valor,
+    "cargo": cargo,
   });
 
   try {
@@ -76,7 +88,7 @@ Future<LoginResultado> enviarLogin({
   required String senha,
   required int cargo,
 }) async {
-  final uri = Uri.parse('http://192.168.66.18:5000/login'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.13:5000/login'); //ip meu notebook
   final body = jsonEncode({"nome": nome, "senha": senha, "cargo": cargo});
 
   try {
@@ -109,17 +121,15 @@ Future<LoginResultado> enviarLogin({
 
 Future<EnviarFotoResultado> enviarFoto({
   required String nome,
-  required String idtanque,
+  // required String idtanque,
+  required String idusuario,
   required String fotoBase64,
 }) async {
   final uri = Uri.parse(
-    'http://192.168.66.18:5000/fotoAtualizada',
-  ); //ip mei notebook
-  final body = jsonEncode({
-    "nome": nome,
-    "idtanque": idtanque,
-    "foto": fotoBase64,
-  });
+    'http://192.168.66.13:5000/fotoAtualizada',
+  ); //ip meu notebook
+
+  final body = jsonEncode({"nome": nome, "id": idusuario, "foto": fotoBase64});
 
   print('📤 Enviando foto para $uri');
   print('👤 Nome: $nome');
@@ -162,6 +172,61 @@ Future<EnviarFotoResultado> enviarFoto({
   }
 }
 
+Future<HistoricoColetaResultado> enviarHistoricoColeta({
+  required String nome,
+  required int idtanque,
+  required int idregiao,
+  required double ph,
+  required double temperatura,
+  required double nivel,
+  required double amonia,
+  required double carbono,
+  required double metano,
+  required String coletor,
+  required String placa,
+}) async {
+  final uri = Uri.parse('http://192.168.66.13:5000/historicoColeta');
+  final body = jsonEncode({
+    "nome": nome,
+    "idtanque": idtanque,
+    "idregiao": idregiao,
+    "ph": ph,
+    "temperatura": temperatura,
+    "nivel": nivel,
+    "amonia": amonia,
+    "carbono": carbono,
+    "metano": metano,
+    "coletor": coletor,
+    "placa": placa,
+  });
+
+  try {
+    final resposta = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final dados = jsonDecode(resposta.body);
+    if (resposta.statusCode == 200) {
+      return HistoricoColetaResultado(
+        sucesso: true,
+        mensagem: dados["status"] ?? "Histórico de coleta enviado com sucesso!",
+      );
+    } else {
+      return HistoricoColetaResultado(
+        sucesso: false,
+        mensagem: dados["erro"] ?? "Erro ao enviar histórico de coleta.",
+      );
+    }
+  } catch (e) {
+    return HistoricoColetaResultado(
+      sucesso: false,
+      mensagem: "Erro ao conectar ao servidor.",
+    );
+  }
+}
+
 Future<CadastroResultado> enviarCadastro({
   required String nome,
   required String senha,
@@ -171,7 +236,7 @@ Future<CadastroResultado> enviarCadastro({
   required String contato,
   String? foto,
 }) async {
-  final uri = Uri.parse('http://192.168.66.18:5000/cadastro'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.13:5000/cadastro'); //ip meu notebook
   final body = jsonEncode({
     "nome": nome,
     "senha": senha,

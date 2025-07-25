@@ -30,7 +30,8 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
   @override
   void initState() {
     super.initState();
-    mqtt = MQTTService(
+    mqtt = MQTTService();
+    mqtt.configurarCallbacks(
       onLoginAceito: () {},
       onLoginNegado: (_) {},
       onCadastroAceito: () {},
@@ -85,7 +86,7 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
           fontWeight: FontWeight.bold,
         ),
       ),
-      endDrawer: MenuDrawer(),
+      endDrawer: MenuDrawer(mqtt: mqtt),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
