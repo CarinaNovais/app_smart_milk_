@@ -40,36 +40,6 @@ def login():
         )
         return jsonify({"status": "login publicado"}), 200
     return jsonify({"erro": "faltam dados obrigatórios"}), 400
-
-@app.route('/historicoColeta', methods=['POST'])
-def historico_coleta():
-    try:
-        dados = request.get_json()
-
-        campos_necessarios = [
-            "nome", "idtanque", "idregiao", "ph",
-            "temperatura", "nivel", "amonia", "carbono", "metano","coletor","placa"
-        ]
-
-        for campo in campos_necessarios:
-            if campo not in dados:
-                return jsonify({"erro": f"Campo '{campo}' ausente."}), 400
-            
-            publish.single(
-                "historicoColeta/entrada",
-                json.dumps(dados),
-                hostname=MQTT_BROKER,
-                port=MQTT_PORT,
-                auth={
-                    'username': MQTT_USERNAME,
-                    'password': MQTT_PASSWORD
-                }  
-            )
-
-            return jsonify({"status": "coleta publicada"}), 200
-    except Exception as e:
-        print(f"❌ Erro ao publicar coleta: {e}")
-        return jsonify({"erro": "Erro ao publicar a coleta"}), 500
         
 
 @app.route('/cadastro', methods=['POST'])
@@ -209,5 +179,36 @@ def qrCode():
         print(f"❌ Erro ao publicar MQTT: {e}")
         return jsonify({"erro": "Erro ao publicar no MQTT"}), 500
 
+@app.route('/cadastroHistoricoColeta', methods=['POST'])
+def historico_coleta():
+    try:
+        dados = request.get_json()
+
+        campos_necessarios = [
+            "nome", "idtanque", "idregiao", "ph",
+            "temperatura", "nivel", "amonia", "carbono", "metano","coletor","placa"
+        ]
+
+        for campo in campos_necessarios:
+            if campo not in dados:
+                return jsonify({"erro": f"Campo '{campo}' ausente."}), 400
+            
+        publish.single(
+            "cadastroHistoricoColeta/entrada",
+                json.dumps(dados),
+                hostname=MQTT_BROKER,
+                port=MQTT_PORT,
+                auth={
+                    'username': MQTT_USERNAME,
+                    'password': MQTT_PASSWORD
+                }  
+        )
+
+        return jsonify({"status": "coleta publicada"}), 200
+    except Exception as e:
+        print(f"❌ Erro ao publicar coleta: {e}")
+        return jsonify({"erro": "Erro ao publicar a coleta"}), 500
+
+    
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

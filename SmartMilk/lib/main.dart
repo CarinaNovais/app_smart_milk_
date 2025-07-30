@@ -9,11 +9,11 @@ import 'package:app_smart_milk/pages/resultadoQrCode.dart';
 //produtor
 import 'package:app_smart_milk/pages/homeProdutor.dart';
 import 'package:app_smart_milk/pages/tanque_usuario.dart';
-import 'package:app_smart_milk/pages/depositosProdutor.dart';
 
 //coletor
 import 'package:app_smart_milk/pages/qrCode_page.dart';
 import 'package:app_smart_milk/pages/homeColetor.dart';
+import 'package:app_smart_milk/pages/historicoColetas.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,7 +46,9 @@ class _MyAppState extends State<MyApp> {
         '/dadosTanque': (context) => DadosTanquePage(),
         '/perfil': (context) => PerfilPage(),
         '/configuracoes': (context) => ConfiguracoesPage(),
-        '/depositosProdutor': (context) => DepositosprodutorPage(),
+        // '/depositosProdutor':
+        //     (context) => DepositosprodutorPage(), //historico coletas coletor
+        '/historicoColeta': (context) => ListaColetasPage(),
         '/qrCode': (context) => QRViewExample(),
         '/homeColetor': (context) => HomeColetorPage(),
         '/resultadoQrCode': (context) => ResultadoQrCodePage(),

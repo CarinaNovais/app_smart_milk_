@@ -142,9 +142,9 @@ class _PerfilPage extends State<PerfilPage> {
       binarioImagem = base64Image;
     });
 
-    setState(() {
-      binarioImagem = base64Image; // guarda para envio
-    });
+    // setState(() {
+    //   binarioImagem = base64Image; // guarda para envio
+    // });
 
     if (binarioImagem != null) {
       String preview =
@@ -157,14 +157,15 @@ class _PerfilPage extends State<PerfilPage> {
 
     //final prefs = await SharedPreferences.getInstance();
     final nome = prefs.getString('nome');
-    final idtanque = prefs.getString('idtanque');
+    // final idtanque = prefs.getString('idtanque');
+    final id = prefs.getInt('id');
 
-    if (nome == null || idtanque == null || binarioImagem == null) {
+    if (nome == null || id == null || binarioImagem == null) {
       print("⚠️ Dados ausentes para envio da imagem.");
       return;
     }
 
-    final dados = {"foto": binarioImagem, "nome": nome, "idtanque": idtanque};
+    final dados = {"foto": binarioImagem, "nome": nome, "id": id};
     final mensagem = jsonEncode(dados);
     final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
     print("📤 Enviando mensagem MQTT com dados: $mensagem");

@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:app_smart_milk/components/tanque_dinamico_visual.dart';
-//import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
-//import 'package:app_smart_milk/components/notifiers.dart';
 
 const Color appBlue = Color(0xFF0097B2);
 

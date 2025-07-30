@@ -6,27 +6,11 @@ import 'package:mqtt_client/mqtt_server_client.dart';
 //import 'package:app_smart_milk/pages/envio_service.dart';
 
 class MQTTService {
-  // final Function onLoginAceito;
-  // final Function(String) onLoginNegado;
-  // final Function onCadastroAceito;
-  // final Function(String) onCadastroNegado;
-  // final Function(Map<String, dynamic>)? onDadosTanque;
-  // final Function()? onFotoEditada;
-  // final Function(String)? onErroFoto;
-
-  // MQTTService({
-  //   required this.onLoginAceito,
-  //   required this.onLoginNegado,
-  //   required this.onCadastroAceito,
-  //   required this.onCadastroNegado,
-  //   this.onDadosTanque,
-  //   this.onFotoEditada,
-  //   this.onErroFoto,
-
   static final MQTTService _instance = MQTTService._internal();
   factory MQTTService() => _instance;
 
   MQTTService._internal();
+  Function(List<Map<String, dynamic>>)? onBuscarColetas;
 
   late Function onLoginAceito;
   late Function(String) onLoginNegado;
@@ -48,6 +32,7 @@ class MQTTService {
     Function()? onFotoEditada,
     Function(String)? onErroFoto,
     Function(String campo, String valor)? onCampoAtualizado,
+    Function(List<Map<String, dynamic>>)? onBuscarColetas,
   }) {
     this.onLoginAceito = onLoginAceito;
     this.onLoginNegado = onLoginNegado;
@@ -57,10 +42,16 @@ class MQTTService {
     this.onFotoEditada = onFotoEditada;
     this.onErroFoto = onErroFoto;
     if (onCampoAtualizado != null) this.onCampoAtualizado = onCampoAtualizado;
+    this.onBuscarColetas = onBuscarColetas;
   }
 
   Future<void> inicializar() async {
-    client = MqttServerClient('192.168.66.50', 'app_smart_milk_cliente01');
+    // client = MqttServerClient('192.168.66.50', 'app_smart_milk_cliente01');
+    client = MqttServerClient(
+      '192.168.66.50',
+      'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
+    );
+
     client.logging(on: true);
     client.keepAlivePeriod = 20;
 
@@ -88,11 +79,13 @@ class MQTTService {
         client.subscribe('tanque/resposta', MqttQos.atMostOnce);
         client.subscribe('fotoAtualizada/resultado', MqttQos.atMostOnce);
         client.subscribe('editarUsuario/resultado', MqttQos.atMostOnce);
+        //qrcode
+        client.subscribe('tanqueIdentificado/resultado', MqttQos.atMostOnce);
         client.subscribe(
-          'tanqueIdentificado/resultado',
+          'cadastroHistoricoColeta/resultado',
           MqttQos.atMostOnce,
-        ); //qrcode
-        client.subscribe('historicoColeta/resultado', MqttQos.atMostOnce);
+        );
+        client.subscribe('buscarColetas/resultado', MqttQos.atMostOnce);
 
         client.updates?.listen(_onMessageReceived);
       } else {
@@ -197,12 +190,24 @@ class MQTTService {
           } else {
             print('❌ Falha ao identificar o QR Code: ${dados['mensagem']}');
           }
-        } else if (topic == 'historicoColeta/resultado') {
-          //arrumar
+        } else if (topic == 'cadastroHistoricoColeta/resultado') {
           if (dados['status'] == 'aceito') {
             print('✅ coleta enviada');
           } else {
             print('❌ coleta nao enviada!');
+          }
+        } else if (topic == 'buscarColetas/resultado') {
+          if (dados['status'] == 'ok') {
+            final coletas = dados['dados'];
+            if (coletas is List) {
+              final List<Map<String, dynamic>> listaColetas =
+                  List<Map<String, dynamic>>.from(coletas);
+              onBuscarColetas?.call(listaColetas);
+            } else {
+              print('⚠️ "dados" não é uma lista.');
+            }
+          } else {
+            print('❌ Erro: ${dados['mensagem']}');
           }
         }
       } else {
@@ -211,6 +216,19 @@ class MQTTService {
     } catch (e) {
       print('❌ Erro ao processar mensagem: $e');
     }
+  }
+
+  Future<void> buscarColetas({String? nome}) async {
+    final prefs = await SharedPreferences.getInstance();
+    nome ??= prefs.getString('nome') ?? '';
+
+    final dados = {"nome": nome};
+
+    client.publishMessage(
+      'buscarColetas/entrada',
+      MqttQos.atLeastOnce,
+      MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+    );
   }
 
   Future<void> buscarDadosTanque({

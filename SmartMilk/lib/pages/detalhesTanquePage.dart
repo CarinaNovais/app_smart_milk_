@@ -75,7 +75,7 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
     final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
 
     mqtt.client.publishMessage(
-      'historicoColeta/entrada',
+      'cadastroHistoricoColeta/entrada',
       MqttQos.atMostOnce,
       buffer,
     );
@@ -106,17 +106,6 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
             _buildItem('Carbono (mg/L)', widget.carbono.toStringAsFixed(2)),
             _buildItem('Metano (mg/L)', widget.metano.toStringAsFixed(2)),
             SizedBox(height: 24),
-            // ElevatedButton(
-            //   onPressed: _isLoading ? null : executarHistoricoColeta,
-            //   child:
-            //       _isLoading
-            //           ? CircularProgressIndicator(color: Colors.white)
-            //           : Text('Enviar Coleta'),
-            //   style: ElevatedButton.styleFrom(
-            //     padding: EdgeInsets.symmetric(vertical: 16),
-            //     textStyle: TextStyle(fontSize: 18),
-            //   ),
-            // ),
             ElevatedButton(
               onPressed:
                   _isLoading

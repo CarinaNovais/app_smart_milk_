@@ -13,7 +13,7 @@ JWT_EXPIRACAO_MINUTOS = 30 #tempo de expiração do token
 # Função para conectar no banco de dados
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.66.20", #ip computador joao
+        host="192.168.66.13", #ip computador joao
         user="root",
         password="root",
         database="mimosa"
@@ -113,13 +113,22 @@ def cadastrar_historico_coleta(dados):
         )
 
         cursor.execute(insert, valores)
+
+        #verifica se o nome do coletor corresponde
+        consulta_nome = """SELECT nome FROM usuario
+        WHERE idtanque = %s AND idregiao = %s"""
+        cursor.execute(consulta_nome,(dados["idtanque"], dados["idregiao"]))
+        resultado = cursor.fetchone()
+        
         conn.commit()
+        cursor.close()
         conn.close()
-        return True, "Cadastro realizado com sucesso"
+        return True, "Cadastro de coleta realizado com sucesso"
+    
     except Exception as erro:
         print("Erro ao cadastrar coleta:", erro)
         return False, "Erro ao cadastrar coleta"
-    
+
 def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_bytes=None):
     try:
         conn = conectar_banco()
@@ -168,7 +177,7 @@ def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_byt
 #         print("Erro ao atualizar foto:", erro)
 #         return False, "Erro ao atualizar foto"
 
-def atualizarFoto(foto_bytes, nome, idusuario):
+def atualizarFoto(foto_bytes, nome, idusuario): #verificar se esta puxando id do usuario
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
@@ -212,6 +221,46 @@ def buscarDadosTanque(nome, idtanque, idregiao):
     except Exception as erro:
         print("Erro ao buscar dados do tanque:", erro)
         return None
+    
+def buscarColetas(nome): 
+    try:
+        nome = nome.strip()
+        print("🔍 Nome recebido para busca:", nome)
+
+        conn = conectar_banco()
+        cursor = conn.cursor()
+       
+
+        query = """SELECT * FROM coleta_tanque WHERE coletor = %s"""
+        cursor.execute(query, (nome,))
+        resultado = cursor.fetchall()
+        print(f"🔎 {len(resultado)} resultados encontrados.")
+
+        return resultado if resultado else None
+    except Exception as erro:
+        print("Erro ao buscar coletas:", erro)
+        return None
+    finally:
+        conn.close()
+    
+def formatar_coletas(dados, nome):
+    return [
+        {
+            "produtor": str(linha[0]),
+            "idTanque": str(linha[1]),
+            "idRegiao": str(linha[2]),
+            "ph": f"{linha[3]:.2f}",
+            "temperatura": f"{linha[4]:.2f}",
+            "nivel": f"{linha[5]:.2f}",
+            "amonia": f"{linha[6]:.2f}",
+            "carbono": f"{linha[7]:.2f}",
+            "metano": f"{linha[8]:.2f}",
+            "coletor": nome,
+            "placa": str(linha[10]),
+        }
+        for linha in dados
+    ]
+
 
 #funcao que trata todas as mensagens recebidas
 def on_message(client, userdata, msg):
@@ -395,9 +444,6 @@ def on_message(client, userdata, msg):
             client.publish("fotoAtualizada/resultado", json.dumps(resposta))
             print(f"📤 Resposta enviada ao app: {resposta}")
 
-
-
-
         #elif topico == "fotoAtualizada/entrada":
          #   print(f"📨 Payload recebido: {payload}")
           #  print(f"📷 Base64 (início): {payload.get('foto', '')[:100]}")
@@ -458,7 +504,7 @@ def on_message(client, userdata, msg):
             client.publish("editarUsuario/resultado", json.dumps(resposta))
             print(f"[MQTT] Atualização de usuário enviada: {resposta}")
             
-        elif topico == "historicoColeta/entrada":
+        elif topico == "cadastroHistoricoColeta/entrada":
             sucesso, mensagem = cadastrar_historico_coleta(payload)
 
             resposta = {
@@ -466,10 +512,10 @@ def on_message(client, userdata, msg):
                 "mensagem": mensagem
             }
 
-            client.publish("historicoColeta/resultado", json.dumps(resposta))
+            client.publish("cadastroHistoricoColeta/resultado", json.dumps(resposta))
             print(f"[MQTT] Resultado histórico enviado: {resposta}")
-            
-        elif topico == "tanqueIdentificado/entrada":
+          
+        elif topico == "tanqueIdentificado/entrada": #qrcode
             print("✅ Mensagem recebida no tópico tanqueIdentificado/entrada")
             nome = payload.get("nome")
             idregiao = payload.get("idregiao")
@@ -514,8 +560,25 @@ def on_message(client, userdata, msg):
 
             client.publish("tanqueIdentificado/resultado", json.dumps(resposta))
 
-                #sucesso, mensagem = buscarDadosTanque(nome, idtanque, idregiao)
+        elif topico == "buscarColetas/entrada":
+            print("✅ Mensagem recebida no tópico buscarColetas/entrada")
+            nome = payload.get("nome")
 
+            dados = buscarColetas(nome)
+
+            if dados:
+                resposta = {
+                    "status": "ok",
+                    "dados": formatar_coletas(dados, nome)
+                }
+            else:
+                resposta = {
+                    "status": "vazio",
+                    "mensagem": f"Nenhuma coleta encontrada para o produtor '{nome}'."
+                }
+
+            client.publish("buscarColetas/resultado", json.dumps(resposta, default=str))
+            print(f"[MQTT] Dados enviados para 'buscarColetas/resultado': {resposta}")
         else:
             print(f"[MQTT] Tópico desconhecido: {topico}")
 
@@ -536,7 +599,9 @@ client.subscribe("tanque/buscar")
 client.subscribe("fotoAtualizada/entrada")
 client.subscribe("editarUsuario/entrada")
 client.subscribe("tanqueIdentificado/entrada")
-client.subscribe("historicoColeta/entrada")
+client.subscribe("cadastroHistoricoColeta/entrada")
+
+client.subscribe("buscarColetas/entrada")
 
 print("🟢 Validador MQTT com sessão JWT rodando...")
 client.loop_forever()

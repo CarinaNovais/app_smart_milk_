@@ -35,7 +35,7 @@ class _HomeColetorPageState extends State<HomeColetorPage> {
     ),
     GridItem(
       imagePath: 'lib/images/historicoColetas.png',
-      route: '/page3',
+      route: '/historicoColeta',
       legenda: 'Histórico Coletas',
     ),
     GridItem(

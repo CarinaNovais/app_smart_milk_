@@ -30,11 +30,14 @@ class AtualizacaoResultado {
   AtualizacaoResultado({required this.sucesso, required this.mensagem});
 }
 
-class HistoricoColetaResultado {
+class CadastroHistoricoColetaResultado {
   final bool sucesso;
   final String mensagem;
 
-  HistoricoColetaResultado({required this.sucesso, required this.mensagem});
+  CadastroHistoricoColetaResultado({
+    required this.sucesso,
+    required this.mensagem,
+  });
 }
 
 Future<AtualizacaoResultado> enviarAtualizacao({
@@ -46,7 +49,7 @@ Future<AtualizacaoResultado> enviarAtualizacao({
   final idtanque = prefs.getString('idtanque') ?? '';
   final cargo = prefs.getInt('cargo');
 
-  final uri = Uri.parse('http://192.168.66.13:5000/editarUsuario');
+  final uri = Uri.parse('http://192.168.66.17:5000/editarUsuario');
   final body = jsonEncode({
     "nome": nome,
     "idtanque": idtanque,
@@ -88,7 +91,7 @@ Future<LoginResultado> enviarLogin({
   required String senha,
   required int cargo,
 }) async {
-  final uri = Uri.parse('http://192.168.66.13:5000/login'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.17:5000/login'); //ip meu notebook
   final body = jsonEncode({"nome": nome, "senha": senha, "cargo": cargo});
 
   try {
@@ -126,7 +129,7 @@ Future<EnviarFotoResultado> enviarFoto({
   required String fotoBase64,
 }) async {
   final uri = Uri.parse(
-    'http://192.168.66.13:5000/fotoAtualizada',
+    'http://192.168.66.17:5000/fotoAtualizada',
   ); //ip meu notebook
 
   final body = jsonEncode({"nome": nome, "id": idusuario, "foto": fotoBase64});
@@ -172,7 +175,7 @@ Future<EnviarFotoResultado> enviarFoto({
   }
 }
 
-Future<HistoricoColetaResultado> enviarHistoricoColeta({
+Future<CadastroHistoricoColetaResultado> enviarHistoricoColeta({
   required String nome,
   required int idtanque,
   required int idregiao,
@@ -185,7 +188,7 @@ Future<HistoricoColetaResultado> enviarHistoricoColeta({
   required String coletor,
   required String placa,
 }) async {
-  final uri = Uri.parse('http://192.168.66.13:5000/historicoColeta');
+  final uri = Uri.parse('http://192.168.66.17:5000/cadastroHistoricoColeta');
   final body = jsonEncode({
     "nome": nome,
     "idtanque": idtanque,
@@ -209,18 +212,18 @@ Future<HistoricoColetaResultado> enviarHistoricoColeta({
 
     final dados = jsonDecode(resposta.body);
     if (resposta.statusCode == 200) {
-      return HistoricoColetaResultado(
+      return CadastroHistoricoColetaResultado(
         sucesso: true,
         mensagem: dados["status"] ?? "Histórico de coleta enviado com sucesso!",
       );
     } else {
-      return HistoricoColetaResultado(
+      return CadastroHistoricoColetaResultado(
         sucesso: false,
         mensagem: dados["erro"] ?? "Erro ao enviar histórico de coleta.",
       );
     }
   } catch (e) {
-    return HistoricoColetaResultado(
+    return CadastroHistoricoColetaResultado(
       sucesso: false,
       mensagem: "Erro ao conectar ao servidor.",
     );
@@ -236,7 +239,7 @@ Future<CadastroResultado> enviarCadastro({
   required String contato,
   String? foto,
 }) async {
-  final uri = Uri.parse('http://192.168.66.13:5000/cadastro'); //ip meu notebook
+  final uri = Uri.parse('http://192.168.66.17:5000/cadastro'); //ip meu notebook
   final body = jsonEncode({
     "nome": nome,
     "senha": senha,
