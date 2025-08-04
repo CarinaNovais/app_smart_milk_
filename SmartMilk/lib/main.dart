@@ -1,4 +1,5 @@
 //gerais
+import 'package:app_smart_milk/pages/historicoDepositosProdutor.dart';
 import 'package:flutter/material.dart';
 import 'package:app_smart_milk/pages/cadastro_page.dart';
 import 'package:app_smart_milk/pages/index.dart';
@@ -46,9 +47,11 @@ class _MyAppState extends State<MyApp> {
         '/dadosTanque': (context) => DadosTanquePage(),
         '/perfil': (context) => PerfilPage(),
         '/configuracoes': (context) => ConfiguracoesPage(),
-        // '/depositosProdutor':
-        //     (context) => DepositosprodutorPage(), //historico coletas coletor
-        '/historicoColeta': (context) => ListaColetasPage(),
+        '/depositosProdutor':
+            (context) =>
+                ListaDepositosProdutorPage(), //historico depositos produtor
+        '/historicoColeta':
+            (context) => ListaColetasPage(), // historico coletas coletor
         '/qrCode': (context) => QRViewExample(),
         '/homeColetor': (context) => HomeColetorPage(),
         '/resultadoQrCode': (context) => ResultadoQrCodePage(),

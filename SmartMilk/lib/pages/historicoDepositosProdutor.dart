@@ -1,111 +1,115 @@
-// import 'package:app_smart_milk/pages/mqtt_service.dart';
-// import 'package:flutter/material.dart';
-// import 'package:app_smart_milk/components/navbar.dart';
-// import 'package:app_smart_milk/components/menuDrawer.dart';
-// import 'package:app_smart_milk/pages/envio_service.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/material.dart';
+import 'package:app_smart_milk/pages/mqtt_service.dart';
+import 'package:app_smart_milk/components/navbar.dart';
+import 'package:app_smart_milk/components/menuDrawer.dart';
+import 'package:intl/intl.dart';
 
-// const Color appBlue = Color(0xFF0097B2);
+class ListaDepositosProdutorPage extends StatefulWidget {
+  const ListaDepositosProdutorPage({Key? key}) : super(key: key);
 
-// class DepositosprodutorPage extends StatefulWidget {
-//   const DepositosprodutorPage({super.key});
+  @override
+  State<ListaDepositosProdutorPage> createState() =>
+      _ListaDepositosProdutorPageState();
+}
 
-//   @override
-//   State<DepositosprodutorPage> createState() => _DepositosprodutorPage();
-// }
+class _ListaDepositosProdutorPageState
+    extends State<ListaDepositosProdutorPage> {
+  List<Map<String, dynamic>> _depositos = [];
+  String nomeProdutor = '';
+  bool _carregando = true;
 
-// class _DepositosprodutorPage extends State<DepositosprodutorPage> {
-//   final mqtt = MQTTService();
-//   String nome = '';
-//   String idtanque = '';
-//   String idregiao = '';
+  late MQTTService mqtt;
 
-//   Future<List<dynamic>>? futureColetas;
+  @override
+  void initState() {
+    super.initState();
+    mqtt = MQTTService();
 
-//   @override
-//   void initState() {
-//     super.initState();
-//     _carregarPreferencias();
-//   }
+    mqtt.configurarCallbacks(
+      onLoginAceito: () {},
+      onLoginNegado: (_) {},
+      onCadastroAceito: () {},
+      onCadastroNegado: (_) {},
+      onDadosTanque: (_) {},
+      onBuscarColetas: (_) {},
+      onBuscarDepositosProdutor: (dados) {
+        setState(() {
+          _depositos = dados;
+          _carregando = false;
+        });
+      },
+    );
+    mqtt.inicializar().then((_) {
+      mqtt.buscarDepositosProdutor();
+    });
+  }
 
-//   Future<void> _carregarPreferencias() async {
-//     final prefs = await SharedPreferences.getInstance();
+  String _formatarData(String dataStr) {
+    try {
+      final data = DateTime.parse(dataStr);
+      return DateFormat('dd/MM/yyyy HH:mm').format(data);
+    } catch (e) {
+      return dataStr; // Retorna como está se der erro
+    }
+  }
 
-//     setState(() {
-//       nome = prefs.getString('nome') ?? '';
-//       idtanque = prefs.getString('idtanque') ?? '';
-//       idregiao = prefs.getString('idregiao') ?? '';
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: const Navbar(
+        title: 'Depositos',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+      endDrawer: MenuDrawer(mqtt: mqtt),
+      body:
+          _carregando
+              ? const Center(child: CircularProgressIndicator())
+              : _depositos.isEmpty
+              ? const Center(child: Text('Nenhuma deposito encontrado.'))
+              : ListView.builder(
+                itemCount: _depositos.length,
+                itemBuilder: (context, index) {
+                  final deposito = _depositos[index];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(
+                      vertical: 6,
+                      horizontal: 10,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '🧾 Deposito #${index + 1}',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 6),
+                          Text('🧑 Produtor: ${deposito['nome']}'),
+                          Text('🧱 ID Tanque: ${deposito['idTanque']}'),
+                          Text('🗺️ ID Região: ${deposito['idRegiao']}'),
+                          Text('🧪 pH: ${deposito['ph']}'),
+                          Text(
+                            '🌡️ Temperatura: ${deposito['temperatura']} °C',
+                          ),
+                          Text('📏 Nível: ${deposito['nivel']}'),
+                          Text('💨 Amônia: ${deposito['amonia']}'),
+                          Text('🌫️ Carbono: ${deposito['carbono']}'),
+                          Text('🔥 Metano: ${deposito['metano']}'),
 
-//       // Após carregar os dados, dispara a busca de coletas
-//       futureColetas = buscarColetas(
-//         nome: nome,
-//         idtanque: idtanque,
-//         idregiao: idregiao,
-//       );
-//     });
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       backgroundColor: appBlue,
-//       appBar: const Navbar(
-//         title: 'Depósitos',
-//         style: TextStyle(
-//           color: Colors.white,
-//           fontSize: 20,
-//           fontWeight: FontWeight.bold,
-//         ),
-//       ),
-//       endDrawer: MenuDrawer(mqtt: mqtt),
-//       body:
-//           futureColetas == null
-//               ? const Center(
-//                 child: CircularProgressIndicator(color: Colors.white),
-//               )
-//               : FutureBuilder<List<dynamic>>(
-//                 future: futureColetas!,
-//                 builder: (context, snapshot) {
-//                   if (snapshot.connectionState == ConnectionState.waiting) {
-//                     return const Center(
-//                       child: CircularProgressIndicator(color: Colors.white),
-//                     );
-//                   } else if (snapshot.hasError) {
-//                     return const Center(
-//                       child: Text(
-//                         'Erro ao carregar dados',
-//                         style: TextStyle(color: Colors.white),
-//                       ),
-//                     );
-//                   } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-//                     return const Center(
-//                       child: Text(
-//                         'Nenhum dado encontrado',
-//                         style: TextStyle(color: Colors.white),
-//                       ),
-//                     );
-//                   } else {
-//                     final coletas = snapshot.data!;
-//                     return ListView.builder(
-//                       itemCount: coletas.length,
-//                       itemBuilder: (context, index) {
-//                         final coleta = coletas[index];
-//                         return Card(
-//                           margin: const EdgeInsets.all(10),
-//                           child: ListTile(
-//                             title: Text(
-//                               'Tanque ${coleta["idTanque"]} - Região ${coleta["idRegiao"]}',
-//                             ),
-//                             subtitle: Text(
-//                               'pH: ${coleta["ph"]} | Temp: ${coleta["temperatura"]}°C | Amônia: ${coleta["amonia"]}',
-//                             ),
-//                           ),
-//                         );
-//                       },
-//                     );
-//                   }
-//                 },
-//               ),
-//     );
-//   }
-// }
+                          Text(
+                            '📅 Data do Depósito: ${_formatarData(deposito['dataDeposito'])}',
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+    );
+  }
+}

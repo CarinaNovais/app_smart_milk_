@@ -12,6 +12,8 @@ class MQTTService {
   MQTTService._internal();
   Function(List<Map<String, dynamic>>)? onBuscarColetas;
 
+  Function(List<Map<String, dynamic>>)? onBuscarDepositosProdutor;
+
   late Function onLoginAceito;
   late Function(String) onLoginNegado;
   late Function onCadastroAceito;
@@ -33,6 +35,7 @@ class MQTTService {
     Function(String)? onErroFoto,
     Function(String campo, String valor)? onCampoAtualizado,
     Function(List<Map<String, dynamic>>)? onBuscarColetas,
+    Function(List<Map<String, dynamic>>)? onBuscarDepositosProdutor,
   }) {
     this.onLoginAceito = onLoginAceito;
     this.onLoginNegado = onLoginNegado;
@@ -43,6 +46,7 @@ class MQTTService {
     this.onErroFoto = onErroFoto;
     if (onCampoAtualizado != null) this.onCampoAtualizado = onCampoAtualizado;
     this.onBuscarColetas = onBuscarColetas;
+    this.onBuscarDepositosProdutor = onBuscarDepositosProdutor;
   }
 
   Future<void> inicializar() async {
@@ -86,6 +90,10 @@ class MQTTService {
           MqttQos.atMostOnce,
         );
         client.subscribe('buscarColetas/resultado', MqttQos.atMostOnce);
+        client.subscribe(
+          'buscarDepositosProdutor/resultado',
+          MqttQos.atMostOnce,
+        );
 
         client.updates?.listen(_onMessageReceived);
       } else {
@@ -121,6 +129,7 @@ class MQTTService {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('token', dados['token']);
             await prefs.setString('expira_em', dados['expira_em']);
+            await prefs.setInt('id', dados['id']);
             await prefs.setString('nome', dados['nome']);
             await prefs.setString('senha', dados['senha'].toString());
 
@@ -209,6 +218,21 @@ class MQTTService {
           } else {
             print('❌ Erro: ${dados['mensagem']}');
           }
+        } else if (topic == 'buscarDepositosProdutor/resultado') {
+          if (dados['status'] == 'ok') {
+            final depositos = dados['dados'];
+            if (depositos is List) {
+              final List<Map<String, dynamic>> listaDepositos =
+                  List<Map<String, dynamic>>.from(depositos);
+              onBuscarDepositosProdutor?.call(listaDepositos);
+            } else {
+              print('⚠️ "dados" não é uma lista.');
+            }
+          } else {
+            print(
+              '❌ Erro topico buscardepositosprodutor: ${dados['mensagem']}',
+            );
+          }
         }
       } else {
         print('⚠️ Payload inesperado: $payload');
@@ -226,6 +250,26 @@ class MQTTService {
 
     client.publishMessage(
       'buscarColetas/entrada',
+      MqttQos.atLeastOnce,
+      MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+    );
+  }
+
+  Future<void> buscarDepositosProdutor({int? id}) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    id ??= prefs.getInt('id');
+    print('idusuario: $id');
+
+    if (id == null) {
+      print('Erro: usuario_id não encontrado.');
+      return;
+    }
+
+    final dados = {"usuario_id": id};
+
+    client.publishMessage(
+      'buscarDepositosProdutor/entrada',
       MqttQos.atLeastOnce,
       MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
     );

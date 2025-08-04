@@ -38,14 +38,14 @@ def verificar_login(nome, senha, cargo):
         cursor = conn.cursor()
 
         if cargo == 0:
-            consulta = "SELECT nome, senha, idtanque, idregiao FROM usuario WHERE nome = %s AND senha = %s AND cargo = %s"
+            consulta = "SELECT id, nome, senha, idtanque, idregiao FROM usuario WHERE nome = %s AND senha = %s AND cargo = %s"
             cursor.execute(consulta, (nome, senha, cargo))
             resultado = cursor.fetchone()
             conn.close()
             return resultado
         
         elif cargo == 2:
-            consulta ="""SELECT usuario.nome, usuario.senha, coletores.placa FROM usuario JOIN coletores ON coletores.coletor = usuario.nome WHERE usuario.nome = %s AND usuario.senha = %s AND usuario.cargo = %s"""
+            consulta ="""SELECT usuario.id, usuario.nome, usuario.senha, coletores.placa FROM usuario JOIN coletores ON coletores.coletor = usuario.nome WHERE usuario.nome = %s AND usuario.senha = %s AND usuario.cargo = %s"""
             cursor.execute(consulta, (nome, senha, cargo))
             resultado = cursor.fetchone()
             conn.close()
@@ -159,23 +159,6 @@ def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_byt
         print("Erro ao cadastrar usuário:", erro)
         return False, "Erro ao cadastrar usuário"
 
-# def atualizarFoto(foto_bytes, nome, idtanque):
-#     try:
-#         conn = conectar_banco()
-#         cursor = conn.cursor()
-
-#          # Insere novo usuário
-#         update = """UPDATE usuario SET foto = %s WHERE nome = %s AND idtanque = %s"""
-#         cursor.execute(update, (foto_bytes, nome, idtanque))
-
-
-#         conn.commit()
-#         conn.close()
-
-#         return True, "Foto Atualizada com sucesso"
-#     except Exception as erro:
-#         print("Erro ao atualizar foto:", erro)
-#         return False, "Erro ao atualizar foto"
 
 def atualizarFoto(foto_bytes, nome, idusuario): #verificar se esta puxando id do usuario
     try:
@@ -261,6 +244,61 @@ def formatar_coletas(dados, nome):
         for linha in dados
     ]
 
+def buscarDepositosProdutor(usuario_id):
+    try:
+        print("🔍 id_usuario recebido para busca:", usuario_id)
+
+        conn = conectar_banco()
+        cursor = conn.cursor()
+
+        query = """
+       SELECT 
+  hdp.usuario_id,
+  hdp.idTanque,
+  hdp.idRegiao,
+  hdp.ph,
+  hdp.temperatura,
+  hdp.nivel,
+  hdp.amonia,
+  hdp.carbono,
+  hdp.metano,
+  hdp.dataDeposito,
+  u.nome
+FROM historico_deposito_produtor hdp
+INNER JOIN usuario u ON hdp.usuario_id = u.id
+WHERE u.id = %s;
+
+        """
+
+        cursor.execute(query, (usuario_id,))
+        resultado = cursor.fetchall()
+        print(f"🔎 {len(resultado)} resultados encontrados.")
+
+        return resultado if resultado else None
+    except Exception as erro:
+        print("Erro ao buscar depósitos:", erro)
+        return None
+    finally:
+        conn.close()
+
+def formatar_depositos(dados, usuario_id):
+    return[
+        {
+            "usuario_id":usuario_id,
+            "idTanque": str(linha[1]),
+            "idRegiao": str(linha[2]),
+            "ph": str(linha[3]),
+            "temperatura": str(linha[4]),
+            "nivel": str(linha[5]),
+            "amonia": str(linha[6]),
+            "carbono": str(linha[7]),
+            "metano": str(linha[8]),
+            "dataDeposito": str(linha[9]),
+            "nome":str(linha[10]),
+
+        }
+        for linha in dados
+    ]
 
 #funcao que trata todas as mensagens recebidas
 def on_message(client, userdata, msg):
@@ -285,10 +323,11 @@ def on_message(client, userdata, msg):
                         "status": "aceito",
                         "token": token,
                         "expira_em": expira_em.isoformat(),
-                        "nome": resultado[0],
-                        "senha": resultado[1],
-                        "idtanque": resultado[2],
-                        "idregiao": resultado[3],
+                        "id":resultado[0],
+                        "nome": resultado[1],
+                        "senha": resultado[2],
+                        "idtanque": resultado[3],
+                        "idregiao": resultado[4],
                         "cargo":cargo
                     }
                 
@@ -298,9 +337,10 @@ def on_message(client, userdata, msg):
                         "status": "aceito",
                         "token": token,
                         "expira_em": expira_em.isoformat(),
-                        "nome": resultado[0],
-                        "senha": resultado[1],
-                        "placa": resultado[2],
+                        "id":resultado[0],
+                        "nome": resultado[1],
+                        "senha": resultado[2],
+                        "placa": resultado[3],
                         "cargo":cargo
                     }
 
@@ -311,9 +351,7 @@ def on_message(client, userdata, msg):
                 }
 
             client.publish("login/resultado", json.dumps(resposta))
-            print(f"[MQTT] Resultado enviado: {resposta}")
-
-           
+            print(f"[MQTT] Resultado enviado: {resposta}")   
         elif topico == "cadastro/entrada":
 
             nome = payload.get("nome")
@@ -378,39 +416,6 @@ def on_message(client, userdata, msg):
             client.publish("tanque/resposta", json.dumps(resposta))
             print(f"[MQTT] Dados do tanque enviados para 'tanque/resposta': {resposta}")
         
-        # elif topico == "fotoAtualizada/entrada":
-        #     print(f"📨 Payload recebido: {payload}")
-        #     print(f"📷 Base64 (início): {payload.get('foto', '')[:100]}")
-
-        #     nome = payload.get("nome")
-        #     idtanque = payload.get("idtanque")
-        #     foto_base64 = payload.get("foto")
-
-        #     if not nome or not idtanque or not foto_base64:
-        #         resposta = {"status": "negado", "mensagem": "Dados incompletos para atualizar foto"}
-        #         client.publish("fotoAtualizada/resultado", json.dumps(resposta))
-        #         return
-
-        #     try:
-        #         foto_bytes = base64.b64decode(foto_base64, validate=True)
-        #         print(f"🧪 Imagem decodificada com {len(foto_bytes)} bytes")
-
-        #         if len(foto_bytes) > 16_777_215:  # limite mediumblob 16MB
-        #             resposta = {"status": "negado", "mensagem": "Imagem excede o limite de 16MB"}
-        #         else:
-        #             sucesso, mensagem = atualizarFoto(foto_bytes, nome, idtanque)
-        #             resposta = {
-        #                 "status": "aceito" if sucesso else "negado",
-        #                 "mensagem": mensagem
-        #             }
-
-        #     except Exception as e:
-        #         print("❌ Erro ao decodificar imagem:", e)
-        #         resposta = {"status": "negado", "mensagem": "Erro ao processar imagem"}
-
-        #     client.publish("fotoAtualizada/resultado", json.dumps(resposta))
-        #     print(f"📤 Resposta enviada ao app: {resposta}")
-        
         elif topico == "fotoAtualizada/entrada":
             print(f"📨 Payload recebido: {payload}")
             print(f"📷 Base64 (início): {payload.get('foto', '')[:100]}")
@@ -443,41 +448,6 @@ def on_message(client, userdata, msg):
             
             client.publish("fotoAtualizada/resultado", json.dumps(resposta))
             print(f"📤 Resposta enviada ao app: {resposta}")
-
-        #elif topico == "fotoAtualizada/entrada":
-         #   print(f"📨 Payload recebido: {payload}")
-          #  print(f"📷 Base64 (início): {payload.get('foto', '')[:100]}")
-
-           # nome = payload.get("nome")
-           # idtanque = payload.get("idtanque")
-           # foto_base64 = payload.get("foto")
-
-          #  if not nome or not idtanque or not foto_base64:
-           #     resposta = {"status": "negado", "mensagem": "Dados incompletos para atualizar foto"}
-            #    client.publish("fotoAtualizada/resultado", json.dumps(resposta))
-             #   return
-
-            #try:
-                # Decodifica com validação (pega erro se base64 for malformado)
-             #   foto_bytes = base64.b64decode(foto_base64, validate=True)
-
-              #  print(f"🧪 Imagem decodificada com {len(foto_bytes)} bytes")
-
-               # if len(foto_bytes) > 16_777_215:
-                 #   resposta = {"status": "negado", "mensagem": "Imagem excede o limite de 16MB"}
-                #else:
-                  #  sucesso, mensagem = atualizarFoto(foto_bytes, nome, idtanque)
-                   # resposta = {
-                    #    "status": "aceito" if sucesso else "negado",
-                     #   "mensagem": mensagem
-                    #}
-
-            #except Exception as e:
-             #   print("❌ Erro ao decodificar imagem:", e)
-              #  resposta = {"status": "negado", "mensagem": "Erro ao processar imagem"}
-
-           # client.publish("fotoAtualizada/resultado", json.dumps(resposta))
-           # print(f"📤 Resposta enviada ao app: {resposta}")
 
 
         elif topico == "editarUsuario/entrada":
@@ -579,8 +549,29 @@ def on_message(client, userdata, msg):
 
             client.publish("buscarColetas/resultado", json.dumps(resposta, default=str))
             print(f"[MQTT] Dados enviados para 'buscarColetas/resultado': {resposta}")
+        
+        elif topico == "buscarDepositosProdutor/entrada":
+
+            print("✅ Mensagem recebida no tópico buscarDepositosProdutor/entrada")
+            usuario_id = payload.get("usuario_id")
+
+            dados = buscarDepositosProdutor(usuario_id)
+
+            if dados:
+                resposta = {
+                    "status": "ok",
+                    "dados": formatar_depositos(dados, usuario_id)
+                }
+            else:
+                resposta = {
+                    "status": "vazio",
+                    "mensagem": f"Nenhum deposito encontrado para o produtor de id '{usuario_id}'."
+                }
         else:
             print(f"[MQTT] Tópico desconhecido: {topico}")
+        client.publish("buscarDepositosProdutor/resultado", json.dumps(resposta, default=str))
+        print(f"[MQTT] Dados enviados para 'buscarDepositosProdutor/resultado': {resposta}")
+        
 
     except Exception as e:
         print("❌ Erro ao processar mensagem:", e)
@@ -600,8 +591,9 @@ client.subscribe("fotoAtualizada/entrada")
 client.subscribe("editarUsuario/entrada")
 client.subscribe("tanqueIdentificado/entrada")
 client.subscribe("cadastroHistoricoColeta/entrada")
-
 client.subscribe("buscarColetas/entrada")
+
+client.subscribe("buscarDepositosProdutor/entrada")
 
 print("🟢 Validador MQTT com sessão JWT rodando...")
 client.loop_forever()
