@@ -1,9 +1,8 @@
 import 'dart:convert';
-//import 'dart:nativewrappers/_internal/vm/lib/ffi_allocation_patch.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
-//import 'package:app_smart_milk/pages/envio_service.dart';
+import 'package:app_smart_milk/components/notifiers.dart';
 
 class MQTTService {
   static final MQTTService _instance = MQTTService._internal();
@@ -11,7 +10,7 @@ class MQTTService {
 
   MQTTService._internal();
   Function(List<Map<String, dynamic>>)? onBuscarColetas;
-
+  Function(List<Map<String, dynamic>>)? onBuscarVacas;
   Function(List<Map<String, dynamic>>)? onBuscarDepositosProdutor;
 
   late Function onLoginAceito;
@@ -21,6 +20,8 @@ class MQTTService {
   Function(Map<String, dynamic>)? onDadosTanque;
   Function()? onFotoEditada;
   Function(String)? onErroFoto;
+  late Function onCadastroVacaAceito;
+  late Function(String) onCadastroVacaNegado;
 
   late MqttClient client;
   late Function(String campo, String valor) onCampoAtualizado;
@@ -34,8 +35,11 @@ class MQTTService {
     Function()? onFotoEditada,
     Function(String)? onErroFoto,
     Function(String campo, String valor)? onCampoAtualizado,
+    Function(List<Map<String, dynamic>>)? onBuscarVacas,
     Function(List<Map<String, dynamic>>)? onBuscarColetas,
     Function(List<Map<String, dynamic>>)? onBuscarDepositosProdutor,
+    required Function onCadastroVacaAceito,
+    required Function(String) onCadastroVacaNegado,
   }) {
     this.onLoginAceito = onLoginAceito;
     this.onLoginNegado = onLoginNegado;
@@ -46,7 +50,10 @@ class MQTTService {
     this.onErroFoto = onErroFoto;
     if (onCampoAtualizado != null) this.onCampoAtualizado = onCampoAtualizado;
     this.onBuscarColetas = onBuscarColetas;
+    this.onBuscarVacas = onBuscarVacas;
     this.onBuscarDepositosProdutor = onBuscarDepositosProdutor;
+    this.onCadastroVacaAceito = onCadastroVacaAceito;
+    this.onCadastroVacaNegado = onCadastroVacaNegado;
   }
 
   Future<void> inicializar() async {
@@ -94,6 +101,8 @@ class MQTTService {
           'buscarDepositosProdutor/resultado',
           MqttQos.atMostOnce,
         );
+        client.subscribe('cadastroVaca/resultado', MqttQos.atMostOnce);
+        client.subscribe('buscarVacas/resultado', MqttQos.atMostOnce);
 
         client.updates?.listen(_onMessageReceived);
       } else {
@@ -132,6 +141,7 @@ class MQTTService {
             await prefs.setInt('id', dados['id']);
             await prefs.setString('nome', dados['nome']);
             await prefs.setString('senha', dados['senha'].toString());
+            await prefs.setString('contato', dados['contato'].toString());
 
             if (dados.containsKey('cargo') && dados['cargo'] != null) {
               final cargo = dados['cargo'];
@@ -146,6 +156,11 @@ class MQTTService {
             } else {
               print('⚠️ Campo "cargo" ausente no JSON. Login parcial.');
               await prefs.setInt('cargo', -1);
+            }
+
+            if (dados.containsKey('foto') && dados['foto'] != null) {
+              await prefs.setString('foto', dados['foto']);
+              fotoUsuarioNotifier.value = dados['foto'];
             }
 
             print('✅ Token e dados do usuário salvos com sucesso.');
@@ -233,6 +248,27 @@ class MQTTService {
               '❌ Erro topico buscardepositosprodutor: ${dados['mensagem']}',
             );
           }
+        } else if (topic == 'cadastroVaca/resultado') {
+          if (dados['status'] == 'aceito') {
+            print('✅ Cadastro aceito!');
+            onCadastroVacaAceito();
+          } else {
+            print('❌ Cadastro de Vaca negado!');
+            onCadastroVacaNegado(dados['mensagem'] ?? 'Erro ao cadastrar Vaca');
+          }
+        } else if (topic == 'buscarVacas/resultado') {
+          if (dados['status'] == 'ok') {
+            final vacas = dados['dados'];
+            if (vacas is List) {
+              final List<Map<String, dynamic>> listaVacas =
+                  List<Map<String, dynamic>>.from(vacas);
+              onBuscarVacas?.call(listaVacas);
+            } else {
+              print('⚠️ "dados" não é uma lista.');
+            }
+          } else {
+            print('❌ Erro topico buscarVacas/resultado: ${dados['mensagem']}');
+          }
         }
       } else {
         print('⚠️ Payload inesperado: $payload');
@@ -240,6 +276,24 @@ class MQTTService {
     } catch (e) {
       print('❌ Erro ao processar mensagem: $e');
     }
+  }
+
+  Future<void> buscarVacas() async {
+    final prefs = await SharedPreferences.getInstance();
+    final int? usuarioId = prefs.getInt('id');
+
+    if (usuarioId == null) {
+      print('ID do usuário não encontrado nos SharedPreferences');
+      return;
+    }
+
+    final dados = {"usuario_id": usuarioId};
+
+    client.publishMessage(
+      'buscarVacas/entrada',
+      MqttQos.atLeastOnce,
+      MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+    );
   }
 
   Future<void> buscarColetas({String? nome}) async {

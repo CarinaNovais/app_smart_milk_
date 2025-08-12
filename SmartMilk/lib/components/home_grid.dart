@@ -43,7 +43,7 @@ class HomeGrid extends StatelessWidget {
           return GestureDetector(onTap: () => onItemTap!(item), child: content);
         }
 
-        return content; // só mostra, sem ação de toque
+        return content;
       },
     );
   }

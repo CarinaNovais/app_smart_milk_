@@ -6,19 +6,11 @@ import 'package:app_smart_milk/components/notifiers.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 
 const Color appBlue = Color(0xFF0097B2);
-//late MQTTService mqtt;
 
 class MenuDrawer extends StatefulWidget {
-  // final String nomeUsuario;
-  // final String? fotoBase64;
   final MQTTService mqtt;
 
-  MenuDrawer({
-    Key? key,
-    // required this.nomeUsuario,
-    // this.fotoBase64,
-    required this.mqtt,
-  }) : super(key: key);
+  MenuDrawer({Key? key, required this.mqtt}) : super(key: key);
 
   @override
   State<MenuDrawer> createState() => _MenuDrawerState();

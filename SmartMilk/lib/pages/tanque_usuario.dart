@@ -47,6 +47,8 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
           ];
         });
       },
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
     mqtt.inicializar().then((_) {
       mqtt.buscarDadosTanque();

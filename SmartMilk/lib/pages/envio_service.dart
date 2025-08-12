@@ -2,6 +2,11 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+const String servidorIP = '192.168.66.20'; // ipmeunotebook
+const String servidorPorta = '5000';
+
+String get baseURL => 'http://$servidorIP:$servidorPorta';
+
 class LoginResultado {
   final bool sucesso;
   final String mensagem;
@@ -14,6 +19,13 @@ class CadastroResultado {
   final String mensagem;
 
   CadastroResultado({required this.sucesso, required this.mensagem});
+}
+
+class CadastroVacaResultado {
+  final bool sucesso;
+  final String mensagem;
+
+  CadastroVacaResultado({required this.sucesso, required this.mensagem});
 }
 
 class EnviarFotoResultado {
@@ -46,13 +58,21 @@ Future<AtualizacaoResultado> enviarAtualizacao({
   required String valor,
 }) async {
   final prefs = await SharedPreferences.getInstance();
-  final idtanque = prefs.getString('idtanque') ?? '';
+  final id = prefs.getInt('id');
+
   final cargo = prefs.getInt('cargo');
 
-  final uri = Uri.parse('http://192.168.66.17:5000/editarUsuario');
+  if (id == null || cargo == null) {
+    return AtualizacaoResultado(
+      sucesso: false,
+      mensagem: "ID ou cargo ausente no dispositivo.",
+    );
+  }
+
+  final uri = Uri.parse('${baseURL}/editarUsuario');
   final body = jsonEncode({
     "nome": nome,
-    "idtanque": idtanque,
+    "id": id,
     "campo": campo,
     "valor": valor,
     "cargo": cargo,
@@ -91,7 +111,7 @@ Future<LoginResultado> enviarLogin({
   required String senha,
   required int cargo,
 }) async {
-  final uri = Uri.parse('http://192.168.66.17:5000/login'); //ip meu notebook
+  final uri = Uri.parse('${baseURL}/login');
   final body = jsonEncode({"nome": nome, "senha": senha, "cargo": cargo});
 
   try {
@@ -124,15 +144,16 @@ Future<LoginResultado> enviarLogin({
 
 Future<EnviarFotoResultado> enviarFoto({
   required String nome,
-  // required String idtanque,
   required String idusuario,
   required String fotoBase64,
 }) async {
-  final uri = Uri.parse(
-    'http://192.168.66.17:5000/fotoAtualizada',
-  ); //ip meu notebook
+  final uri = Uri.parse('${baseURL}/fotoAtualizada');
 
-  final body = jsonEncode({"nome": nome, "id": idusuario, "foto": fotoBase64});
+  final body = jsonEncode({
+    "nome": nome,
+    "id": int.parse(idusuario),
+    "foto": fotoBase64,
+  });
 
   print('📤 Enviando foto para $uri');
   print('👤 Nome: $nome');
@@ -188,7 +209,7 @@ Future<CadastroHistoricoColetaResultado> enviarHistoricoColeta({
   required String coletor,
   required String placa,
 }) async {
-  final uri = Uri.parse('http://192.168.66.17:5000/cadastroHistoricoColeta');
+  final uri = Uri.parse('${baseURL}/cadastroHistoricoColeta');
   final body = jsonEncode({
     "nome": nome,
     "idtanque": idtanque,
@@ -230,6 +251,53 @@ Future<CadastroHistoricoColetaResultado> enviarHistoricoColeta({
   }
 }
 
+////////////////////////////////////////////fazer future cadastrovacasresultado
+Future<CadastroVacaResultado> enviarCadastroVaca({
+  required int usuario_id,
+  required String nome,
+  required int brinco,
+  required int crias,
+  required String origem,
+  required String estado,
+}) async {
+  final uri = Uri.parse('${baseURL}/cadastroVaca');
+  final body = jsonEncode({
+    "usuario_id": usuario_id,
+    "nome": nome,
+    "brinco": brinco,
+    "crias": crias,
+    "origem": origem,
+    "estado": estado,
+  });
+
+  try {
+    final resposta = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final dados = jsonDecode(resposta.body);
+
+    if (resposta.statusCode == 200) {
+      return CadastroVacaResultado(
+        sucesso: true,
+        mensagem: dados["status"] ?? "Cadastro da vaca publicado com sucesso!",
+      );
+    } else {
+      return CadastroVacaResultado(
+        sucesso: false,
+        mensagem: dados["erro"] ?? "Erro ao publicar cadastro da vaca.",
+      );
+    }
+  } catch (e) {
+    return CadastroVacaResultado(
+      sucesso: false,
+      mensagem: "Erro ao conectar ao servidor.",
+    );
+  }
+}
+
 Future<CadastroResultado> enviarCadastro({
   required String nome,
   required String senha,
@@ -239,7 +307,7 @@ Future<CadastroResultado> enviarCadastro({
   required String contato,
   String? foto,
 }) async {
-  final uri = Uri.parse('http://192.168.66.17:5000/cadastro'); //ip meu notebook
+  final uri = Uri.parse('${baseURL}/cadastro');
   final body = jsonEncode({
     "nome": nome,
     "senha": senha,

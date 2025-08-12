@@ -4,7 +4,6 @@ import 'package:app_smart_milk/pages/envio_service.dart';
 import 'package:app_smart_milk/components/my_button.dart';
 import 'package:app_smart_milk/components/my_textField.dart';
 import 'package:app_smart_milk/components/quadrado_img.dart';
-//import 'package:app_smart_milk/pages/cadastro_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
@@ -43,7 +42,7 @@ class _LoginPageState extends State<LoginPage> {
             setState(() {
               _tokenRecebido = token;
             });
-            // 🔁 Faz o redirecionamento após login aceito
+            //Faz o redirecionamento após login aceito
             if (widget.cargo == 0) {
               Navigator.pushReplacementNamed(context, '/homeProdutor');
             } else {
@@ -61,6 +60,8 @@ class _LoginPageState extends State<LoginPage> {
       },
       onCadastroAceito: () {},
       onCadastroNegado: (msg) {},
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
     mqtt.inicializar();
   }
@@ -100,7 +101,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const SizedBox(height: 50),
-                Image.asset('lib/images/VACALOGO.jpg', height: 70, width: 70),
+                Image.asset('lib/images/VACALOGO.png', height: 200, width: 200),
                 const SizedBox(height: 50),
                 const Text(
                   'Bem-vindo de volta!',
@@ -133,34 +134,6 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
                 const SizedBox(height: 50),
-                /*
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text(
-                      'Primeira vez?',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    const SizedBox(width: 4),
-                    InkWell(
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/cadastro',
-                          arguments: {'cargo': widget.cargo},
-                        );
-                      },
-                      child: const Text(
-                        'Cadastre-se agora',
-                        style: TextStyle(
-                          color: Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),*/
-                /*const SizedBox(height: 20),*/
                 if (_tokenRecebido != null)
                   Padding(
                     padding: const EdgeInsets.all(8.0),

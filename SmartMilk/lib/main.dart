@@ -10,6 +10,7 @@ import 'package:app_smart_milk/pages/resultadoQrCode.dart';
 //produtor
 import 'package:app_smart_milk/pages/homeProdutor.dart';
 import 'package:app_smart_milk/pages/tanque_usuario.dart';
+import 'package:app_smart_milk/pages/monitoramentoVacas.dart';
 
 //coletor
 import 'package:app_smart_milk/pages/qrCode_page.dart';
@@ -55,6 +56,7 @@ class _MyAppState extends State<MyApp> {
         '/qrCode': (context) => QRViewExample(),
         '/homeColetor': (context) => HomeColetorPage(),
         '/resultadoQrCode': (context) => ResultadoQrCodePage(),
+        '/monitoramentoVacas': (context) => monitoramentoVacasPage(),
       },
     );
   }

@@ -48,7 +48,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     ),
     GridItem(
       imagePath: 'lib/images/monitoramentoVacas.png',
-      route: '/page6',
+      route: '/monitoramentoVacas',
       legenda: 'Monitoramento Vacas',
     ),
   ];
@@ -64,6 +64,8 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       onCadastroAceito: () {},
       onCadastroNegado: (_) {},
       onDadosTanque: (_) {},
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
     mqtt.inicializar();
   }
@@ -73,7 +75,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     setState(() {
       nomeUsuario = prefs.getString('nome') ?? 'Usuário';
     });
-    // 🔔 Atualiza o notifier para refletir no MenuDrawer
+    //Atualiza o notifier para refletir no MenuDrawer
     nomeUsuarioNotifier.value = nomeUsuario;
 
     if (nomeUsuario == 'Usuário') {

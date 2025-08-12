@@ -66,6 +66,8 @@ class _QRViewExampleState extends State<QRViewExample> {
           print('⛔ Navegação bloqueada por _isProcessing = true');
         }
       },
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
 
     mqtt.inicializar();
@@ -122,14 +124,6 @@ class _QRViewExampleState extends State<QRViewExample> {
         try {
           final Map<String, dynamic> json = jsonDecode(data);
           print('📲 Dados decodificados do QR: $json');
-          // final String nome = json['nome'].toString(); // Garantir string
-          // final String idtanque =
-          //     json['idtanque'].toString(); // Converter para string
-          // final String idregiao =
-          //     json['idregiao'].toString(); // Converter para string
-
-          // final prefs = await SharedPreferences.getInstance();
-          // final int? cargo = prefs.getInt('cargo');
 
           final String nome = json['nome'].toString(); // Garantir string
           final String idtanque = json['idtanque'].toString();

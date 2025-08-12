@@ -14,7 +14,6 @@ class CadastroPage extends StatefulWidget {
 }
 
 class _CadastroPageState extends State<CadastroPage> {
-  //String foto = ''; //variavel para guardar foto base64
   bool _isLoading = false;
 
   final nomeController = TextEditingController();
@@ -48,6 +47,8 @@ class _CadastroPageState extends State<CadastroPage> {
           ).showSnackBar(SnackBar(content: Text(msg)));
         }
       },
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
     mqtt.inicializar();
   }

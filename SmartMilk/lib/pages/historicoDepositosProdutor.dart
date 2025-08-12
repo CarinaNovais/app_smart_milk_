@@ -38,6 +38,8 @@ class _ListaDepositosProdutorPageState
           _carregando = false;
         });
       },
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
     mqtt.inicializar().then((_) {
       mqtt.buscarDepositosProdutor();

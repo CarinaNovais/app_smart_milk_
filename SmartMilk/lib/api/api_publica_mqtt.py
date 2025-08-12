@@ -11,7 +11,7 @@ MQTT_PORT = 1883
 MQTT_USERNAME = "csilab"
 MQTT_PASSWORD = "WhoAmI#2023"
 
-# Limite máximo para o corpo da requisição (exemplo: 20MB)
+# Limite máximo para o corpo da requisição (20MB)
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 megabytes
 
 # Tratamento do erro 413
@@ -76,11 +76,11 @@ def fotoAtualizada():
 
         nome = dados.get("nome")
         foto_base64 = dados.get("foto")
-        # idtanque = dados.get("idtanque")
         idusuario = dados.get("id")
 
-        if not all(k is not None for k in[nome, foto_base64, idusuario]):
-            return jsonify({"erro": "faltam dados obrigatórios"}),400
+        if not all(k for k in [nome, foto_base64, idusuario]):
+            return jsonify({"erro": "faltam dados obrigatórios"}), 400
+
 
         #log do tamanho da imagem recebida
         print(f"Tamanho da imagem recebida: {len(foto_base64)} caracteres")
@@ -117,20 +117,21 @@ def fotoAtualizada():
 def editar_usuario():
     dados = request.get_json()
 
+    id = dados.get("id")
     nome = dados.get("nome")
-    idtanque = dados.get("idtanque")
+    # idtanque = dados.get("idtanque")
     cargo = dados.get("cargo")
     campo = dados.get("campo")     # exemplo: "senha"
     valor = dados.get("valor")     # novo valor para o campo
 
     print("📥 Dados recebidos:", dados)
     
-    if nome is None or campo is None or valor is None or cargo is None:
+    if nome is None or campo is None or valor is None or cargo is None or id is None:
         return jsonify({"erro": "Faltam dados obrigatórios"}), 400
 
     # Produtor precisa de idtanque
-    if cargo == 0 and not idtanque:
-        return jsonify({"erro": "Produtor deve ter um idtanque"}), 400
+    # if cargo == 0 and not idtanque:
+    #     return jsonify({"erro": "Produtor deve ter um idtanque"}), 400
     
     publish.single(
         "editarUsuario/entrada",
@@ -208,7 +209,32 @@ def historico_coleta():
     except Exception as e:
         print(f"❌ Erro ao publicar coleta: {e}")
         return jsonify({"erro": "Erro ao publicar a coleta"}), 500
+    
+@app.route('/cadastroVacas', methods=['POST'])
+def cadastroVacas():
+    dados = request.get_json()
+    
+    usuario_id = dados.get("usuario_id")
+    nome = dados.get("nome", "").strip()
+    brinco = dados.get("brinco")
+    crias = dados.get("crias")
+    origem = dados.get("origem", "").strip()
+    estado = dados.get("estado", "").strip()
 
+    if all(x is not None for x in [nome, brinco, crias, origem, estado, usuario_id]):
+
+        publish.single(
+            "cadastroVaca/entrada",
+            json.dumps(dados),  # converte para JSON
+            hostname=MQTT_BROKER,
+            port=MQTT_PORT,
+            auth={
+                'username': MQTT_USERNAME,
+                'password': MQTT_PASSWORD
+            }
+        )
+        return jsonify({"status": "cadastro de vaca publicado"}), 200
+    return jsonify({"erro": "faltam dados obrigatórios"}), 400
     
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

@@ -34,9 +34,9 @@ class IndexPage extends StatelessWidget {
                 children: [
                   // Logo
                   Image.asset(
-                    'lib/images/VACALOGO.jpg',
-                    height: 100,
-                    width: 100,
+                    'lib/images/VACALOGO.png',
+                    height: 200,
+                    width: 200,
                   ),
                   const SizedBox(height: 40),
 
@@ -72,9 +72,7 @@ class IndexPage extends StatelessWidget {
                       Navigator.pushNamed(
                         context,
                         '/cadastro',
-                        arguments: {
-                          'cargo': 0,
-                        }, // ou altere conforme necessário
+                        arguments: {'cargo': 0},
                       );
                     },
                     child: const Text(

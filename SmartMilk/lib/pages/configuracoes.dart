@@ -13,8 +13,9 @@ import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 
+import 'package:path_provider/path_provider.dart';
+
 const Color appBlue = Color(0xFF0097B2);
-//late MQTTService mqtt;
 
 class ConfiguracoesPage extends StatefulWidget {
   const ConfiguracoesPage({super.key});
@@ -45,7 +46,6 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
 
   int? cargo;
   String nomeUsuario = '';
-  //String fotoBase64 = '';
   late MQTTService mqtt;
 
   @override
@@ -61,21 +61,23 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
         final prefs = await SharedPreferences.getInstance();
 
         final fotoBase64 = prefs.getString('foto');
+        final userId = prefs.getInt('id');
 
-        if (fotoBase64 != null) {
+        if (fotoBase64 != null && fotoBase64.isNotEmpty && userId != null) {
+          // Salva a imagem local usando nome único por usuário
+          final nomeArquivo = 'foto_usuario_$userId.png';
+          final caminho = await salvarImagemLocal(fotoBase64, nomeArquivo);
+
+          // Salva o caminho no prefs com chave específica do usuário
+          await prefs.setString('caminho_foto_$userId', caminho);
+
           setState(() {
-            imagemMemoria = base64Decode(fotoBase64);
-            imagemPerfil = null;
+            imagemPerfil = File(caminho);
+            imagemMemoria = null;
           });
 
-          // 🔔 Atualiza o notifier da imagem
-          fotoUsuarioNotifier.value = fotoBase64;
-        }
-
-        if (fotoBase64 != null && fotoBase64.isNotEmpty) {
-          setState(() {
-            imagemMemoria = base64Decode(fotoBase64);
-          });
+          //Atualiza o notifier
+          fotoUsuarioNotifier.value = caminho;
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -112,14 +114,32 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
             break;
         }
       },
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
 
     mqtt.inicializar();
     carregarDadosUsuario();
   }
 
+  // Função para salvar base64 como arquivo local e retornar o caminho
+  Future<String> salvarImagemLocal(
+    String base64Image,
+    String nomeArquivo,
+  ) async {
+    final bytes = base64Decode(base64Image);
+    final diretorio = await getApplicationDocumentsDirectory();
+    final caminho = '${diretorio.path}/$nomeArquivo';
+
+    final arquivo = File(caminho);
+    await arquivo.writeAsBytes(bytes);
+
+    return caminho;
+  }
+
   Future<void> carregarDadosUsuario() async {
     final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('id');
 
     setState(() {
       nomeController.text = prefs.getString('nome') ?? '';
@@ -129,6 +149,15 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       contatoController.text = prefs.getString('contato') ?? '';
       placaController.text = prefs.getString('placa') ?? '';
       cargo = prefs.getInt('cargo');
+      //
+      if (userId != null) {
+        final caminhoFoto = prefs.getString('caminho_foto_$userId');
+        if (caminhoFoto != null && caminhoFoto.isNotEmpty) {
+          imagemPerfil = File(caminhoFoto);
+          imagemMemoria = null;
+          fotoCaminhoNotifier.value = caminhoFoto;
+        }
+      }
     });
     // Atualiza os notifiers
     nomeUsuarioNotifier.value = nomeController.text;
@@ -143,17 +172,24 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       final file = File(pickedFile.path);
       final bytes = await file.readAsBytes();
       final base64Image = base64Encode(bytes);
-      setState(() {
-        binarioImagem = base64Image;
-      });
 
       final prefs = await SharedPreferences.getInstance();
       final nome = prefs.getString('nome');
-      final idtanque = prefs.getString('idtanque');
+      final id = prefs.getInt('id');
 
-      if (nome == null || idtanque == null || binarioImagem == null) return;
+      if (nome == null || id == null || binarioImagem == null) return;
 
-      final dados = {"foto": binarioImagem, "nome": nome, "idtanque": idtanque};
+      final nomeArquivo = 'foto_usuario_$id.png';
+      // Salva localmente a foto selecionada
+      final caminho = await salvarImagemLocal(binarioImagem!, nomeArquivo);
+
+      setState(() {
+        imagemPerfil = File(caminho);
+        imagemMemoria = null;
+        binarioImagem = base64Image;
+      });
+
+      final dados = {"foto": binarioImagem, "nome": nome, "id": id};
       final mensagem = jsonEncode(dados);
       final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
 
@@ -162,16 +198,18 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
         MqttQos.atMostOnce,
         buffer,
       );
+      await prefs.setString('caminho_foto_$id', caminho);
+      fotoUsuarioNotifier.value = caminho;
     }
   }
 
   void atualizarCampo(String campo, String valor) async {
     final prefs = await SharedPreferences.getInstance();
     final nome = prefs.getString('nome');
-    final idtanque = prefs.getString('idtanque');
+    final id = prefs.getInt('id');
     final cargo = prefs.getInt('cargo');
 
-    if (nome == null || cargo == null) {
+    if (nome == null || cargo == null || id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("⚠️ Dados do usuário ausentes")),
       );
@@ -183,7 +221,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
     if (cargo == 0) {
       dados = {
         "nome": nome,
-        "idtanque": idtanque,
+        "id": id,
         "campo": campo,
         "valor": valor,
         "cargo": cargo,
@@ -241,33 +279,41 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
           children: [
             ValueListenableBuilder<String?>(
               valueListenable: fotoUsuarioNotifier,
-              builder: (context, fotoBase64, _) {
-                Uint8List? imagemMemoria;
-                if (fotoBase64 != null && fotoBase64.isNotEmpty) {
-                  imagemMemoria = base64Decode(fotoBase64);
+              builder: (context, caminhoFoto, _) {
+                File? imagemArquivo;
+                if (caminhoFoto != null && caminhoFoto.isNotEmpty) {
+                  imagemArquivo = File(caminhoFoto);
                 }
 
-                return GestureDetector(
-                  onTap: selecionarEenviarImagem,
-                  child: CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white,
-                    backgroundImage:
-                        imagemPerfil != null
-                            ? FileImage(imagemPerfil!)
-                            : (imagemMemoria != null
-                                ? MemoryImage(imagemMemoria)
-                                : null),
-                    child:
-                        (imagemPerfil == null && imagemMemoria == null)
-                            ? const Icon(Icons.person, size: 50, color: appBlue)
-                            : null,
-                  ),
+                return Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 50,
+                      backgroundColor: Colors.white,
+                      backgroundImage:
+                          imagemPerfil != null
+                              ? FileImage(imagemPerfil!)
+                              : (imagemArquivo != null
+                                  ? FileImage(imagemArquivo)
+                                  : null),
+                      child:
+                          (imagemPerfil == null && imagemArquivo == null)
+                              ? const Icon(
+                                Icons.person,
+                                size: 50,
+                                color: appBlue,
+                              )
+                              : null,
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton(
+                      onPressed: selecionarEenviarImagem,
+                      child: const Text('alterar foto'),
+                    ),
+                  ],
                 );
               },
             ),
-
-            const SizedBox(height: 16),
 
             // Nome
             buildEditableField(
@@ -287,23 +333,6 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
                   editandoNome = !editandoNome;
                 });
               },
-
-              // onPressed: () {
-              //   setState(() {
-              //     if (editandoNome) {
-              //       salvarCampo(
-              //         campo:"nome",
-              //         valor: nomeController.text,
-              //         onNotifierUpdate()=>
-              //       //atualizarCampo("nome", nomeController.text);
-              //       //prefs.setString('nome', nomeController.text);
-              //       //nomeUsuarioNotifier.value = nomeController.text;
-              //         nomeUsuarioNotifier.value = nomeController.text,
-              //       );
-              //     }
-              //     editandoNome = !editandoNome;
-              //   });
-              // },
             ),
 
             //campos condicionais
@@ -318,7 +347,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
                     if (editandoIdTanque) {
                       salvarCampo(
                         campo: "idtanque",
-                        valor: nomeController.text,
+                        valor: idTanqueController.text,
                         onNotifierUpdate:
                             () =>
                                 idtanqueUsuarioNotifier.value =

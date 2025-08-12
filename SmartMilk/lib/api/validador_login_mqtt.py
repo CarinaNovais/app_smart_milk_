@@ -19,6 +19,7 @@ def conectar_banco():
         database="mimosa"
     )
 
+
 #função gerar token JWT
 def gerar_token(usuario):
     exp = datetime.datetime.utcnow() + datetime.timedelta(minutes=JWT_EXPIRACAO_MINUTOS)
@@ -38,14 +39,14 @@ def verificar_login(nome, senha, cargo):
         cursor = conn.cursor()
 
         if cargo == 0:
-            consulta = "SELECT id, nome, senha, idtanque, idregiao FROM usuario WHERE nome = %s AND senha = %s AND cargo = %s"
+            consulta = "SELECT id, nome, senha, idtanque, idregiao, contato, foto FROM usuario WHERE nome = %s AND senha = %s AND cargo = %s"
             cursor.execute(consulta, (nome, senha, cargo))
             resultado = cursor.fetchone()
             conn.close()
             return resultado
         
         elif cargo == 2:
-            consulta ="""SELECT usuario.id, usuario.nome, usuario.senha, coletores.placa FROM usuario JOIN coletores ON coletores.coletor = usuario.nome WHERE usuario.nome = %s AND usuario.senha = %s AND usuario.cargo = %s"""
+            consulta ="""SELECT usuario.id, usuario.nome, usuario.senha, coletores.placa, usuario.contato, usuario.foto FROM usuario JOIN coletores ON coletores.coletor = usuario.nome WHERE usuario.nome = %s AND usuario.senha = %s AND usuario.cargo = %s"""
             cursor.execute(consulta, (nome, senha, cargo))
             resultado = cursor.fetchone()
             conn.close()
@@ -58,22 +59,22 @@ def verificar_login(nome, senha, cargo):
         print("Erro ao acessar banco:", erro)
         return False
     
-def atualizar_usuario(campo, valor, nome, idtanque, cargo):
+def atualizar_usuario(campo, valor, nome, cargo, id):
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
 
         if cargo == 0:
-            query = f"UPDATE usuario SET {campo} = %s WHERE nome = %s AND idtanque = %s"
-            cursor.execute(query, (valor, nome, idtanque))
+            query = f"UPDATE usuario SET {campo} = %s WHERE nome = %s AND id = %s"
+            cursor.execute(query, (valor, nome, id))
         
         elif cargo == 2:
             if campo == "placa":
-                query = f"UPDATE coletores SET {campo} = %s WHERE coletor = %s"
-                cursor.execute(query, (valor, nome, cargo))
+                query = f"UPDATE coletores SET {campo} = %s WHERE coletor = %s AND id = %s"
+                cursor.execute(query, (valor, nome, id))
             else:
-                query = f"UPDATE usuario SET {campo} = %s WHERE nome = %s AND cargo = %s"
-                cursor.execute(query, (valor, nome, cargo))
+                query = f"UPDATE usuario SET {campo} = %s WHERE nome = %s AND cargo = %s AND id = %s"
+                cursor.execute(query, (valor, nome, cargo, id))
 
         else:
             return False, "Cargo não reconhecido"
@@ -299,7 +300,62 @@ def formatar_depositos(dados, usuario_id):
         }
         for linha in dados
     ]
+def cadastrar_vaca(nome, brinco, crias, origem,estado,usuario_id):
+    try:
+        conn = conectar_banco()
+        cursor = conn.cursor()
 
+        # Verifica se já existe vaca com esse nome e nesse dono 
+        cursor.execute("SELECT * FROM vacas WHERE nome = %s AND usuario_id = %s", (nome, usuario_id))
+        if cursor.fetchone():
+            conn.close()
+            return False, "Nome de vaca já cadastrado com esse dono"
+
+        # Insere nova vaca
+        insert = """ INSERT INTO vacas (nome, brinco, crias, origem,estado, usuario_id) VALUES (%s, %s, %s, %s, %s,%s)"""
+        cursor.execute(insert, (nome, brinco, crias, origem,estado,usuario_id))
+
+
+        conn.commit()
+        conn.close()
+        return True, "Cadastro da vaca realizado com sucesso"
+    except Exception as erro:
+        print("Erro ao cadastrar vaca:", erro)
+        return False, "Erro ao cadastrar vaca"
+
+def buscarVacas(usuario_id): 
+    try:
+        print("Id recebido para busca:", usuario_id)
+
+        conn = conectar_banco()
+        cursor = conn.cursor()
+       
+
+        query = """SELECT * FROM vacas WHERE usuario_id = %s"""
+        cursor.execute(query, (usuario_id,))
+        resultado = cursor.fetchall()
+        print(f"🔎 {len(resultado)} resultados encontrados.")
+
+        return resultado if resultado else None
+    except Exception as erro:
+        print("Erro ao buscar coletas:", erro)
+        return None
+    finally:
+        conn.close()
+
+def formatar_lista_vacas(dados, usuario_id):
+    return[
+        {
+            "usuario_id":usuario_id,
+            "nome": str(linha[1]),
+            "brinco": str(linha[2]),
+            "crias": str(linha[3]),
+            "origem": str(linha[4]),
+            "estado": str(linha[5]),
+
+        }
+        for linha in dados
+    ]
 #funcao que trata todas as mensagens recebidas
 def on_message(client, userdata, msg):
     try:
@@ -316,9 +372,15 @@ def on_message(client, userdata, msg):
 
             if resultado:
                 token, expira_em = gerar_token(nome)
-
                 if cargo == 0:
                     # produtor
+                    foto_bytes = resultado[6]
+
+                    if foto_bytes:
+                        foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
+                    else:
+                        foto_base64 = None
+                    
                     resposta = {
                         "status": "aceito",
                         "token": token,
@@ -328,11 +390,19 @@ def on_message(client, userdata, msg):
                         "senha": resultado[2],
                         "idtanque": resultado[3],
                         "idregiao": resultado[4],
+                        "contato":resultado[5],
+                        "foto":foto_base64,
                         "cargo":cargo
                     }
                 
                 elif cargo == 2:
                     # coletor
+                    foto_bytes = resultado[5]
+                    if foto_bytes:
+                        foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
+                    else:
+                        foto_base64 = None
+
                     resposta = {
                         "status": "aceito",
                         "token": token,
@@ -341,6 +411,8 @@ def on_message(client, userdata, msg):
                         "nome": resultado[1],
                         "senha": resultado[2],
                         "placa": resultado[3],
+                        "contato":resultado[4],
+                        "foto":foto_base64,
                         "cargo":cargo
                     }
 
@@ -352,8 +424,8 @@ def on_message(client, userdata, msg):
 
             client.publish("login/resultado", json.dumps(resposta))
             print(f"[MQTT] Resultado enviado: {resposta}")   
-        elif topico == "cadastro/entrada":
 
+        elif topico == "cadastro/entrada":
             nome = payload.get("nome")
             senha = payload.get("senha")
             cargo = payload.get("cargo")
@@ -369,7 +441,7 @@ def on_message(client, userdata, msg):
                     print("Erro ao decodificar foto:", e)
                     foto_bytes = None
             else:
-                foto_bytes = None  # Aqui você define foto_bytes como None para foto null
+                foto_bytes = None  #foto_bytes como None para foto null
 
             sucesso, mensagem = cadastrar_usuario(nome, senha, idtanque, idregiao, cargo, contato, foto_bytes)
 
@@ -437,6 +509,11 @@ def on_message(client, userdata, msg):
                     resposta = {"status": "negado", "mensagem": "Imagem excede o limite de 16MB"}
                 else:
                     sucesso, mensagem = atualizarFoto(foto_bytes, nome, idusuario)
+                    
+                    # Garante que mensagem é string para json.dumps
+                    if isinstance(mensagem, bytes):
+                        mensagem = mensagem.decode('utf-8', errors='ignore')
+                    
                     resposta = {
                         "status": "aceito" if sucesso else "negado",
                         "mensagem": mensagem
@@ -451,19 +528,16 @@ def on_message(client, userdata, msg):
 
 
         elif topico == "editarUsuario/entrada":
+            id = payload.get("id")
             campo = payload.get("campo") 
             valor = payload.get("valor")
             nome = payload.get("nome")
             cargo = payload.get("cargo")
-            idtanque = payload.get("idtanque")
 
-            if not campo or not valor or not nome or cargo is None:
+            if not campo or not valor or not nome or cargo is None or id is None:
                 resposta = {"status": "negado", "mensagem": "Dados incompletos"}
-
-            elif cargo == 0 and not idtanque: #cargo 0 = produtor → precisa de idtanque
-               resposta = {"status": "negado", "mensagem": "Produtor deve ter idtanque"}
             else:
-                sucesso, mensagem = atualizar_usuario(campo, valor, nome, idtanque,cargo)
+                sucesso, mensagem = atualizar_usuario(campo, valor, nome,cargo,id)
                 resposta = {
                     "status": "aceito" if sucesso else "negado",
                     "mensagem": mensagem,
@@ -551,10 +625,8 @@ def on_message(client, userdata, msg):
             print(f"[MQTT] Dados enviados para 'buscarColetas/resultado': {resposta}")
         
         elif topico == "buscarDepositosProdutor/entrada":
-
             print("✅ Mensagem recebida no tópico buscarDepositosProdutor/entrada")
             usuario_id = payload.get("usuario_id")
-
             dados = buscarDepositosProdutor(usuario_id)
 
             if dados:
@@ -567,11 +639,53 @@ def on_message(client, userdata, msg):
                     "status": "vazio",
                     "mensagem": f"Nenhum deposito encontrado para o produtor de id '{usuario_id}'."
                 }
-        else:
-            print(f"[MQTT] Tópico desconhecido: {topico}")
-        client.publish("buscarDepositosProdutor/resultado", json.dumps(resposta, default=str))
-        print(f"[MQTT] Dados enviados para 'buscarDepositosProdutor/resultado': {resposta}")
-        
+
+            client.publish("buscarDepositosProdutor/resultado", json.dumps(resposta, default=str))
+            print(f"[MQTT] Dados enviados para 'buscarDepositosProdutor/resultado': {resposta}")
+
+        elif topico == "cadastroVaca/entrada":
+            usuario_id = payload.get("usuario_id")
+            nome = payload.get("nome")
+            brinco = int(payload.get("brinco"))
+            crias = int(payload.get("crias"))
+            origem = payload.get("origem")
+            estado = payload.get("estado")  
+
+            sucesso, mensagem = cadastrar_vaca(nome, brinco, crias, origem,estado, usuario_id)
+
+            if sucesso:
+                resposta = {
+            "status": "aceito",
+            "mensagem": mensagem
+            }
+            else:
+                resposta = {
+            "status": "negado",
+            "mensagem": mensagem
+            }
+
+            client.publish("cadastroVaca/resultado", json.dumps(resposta))
+            print(f"[MQTT] Resultado CADASTRO VACA enviado: {resposta}")
+
+        elif topico == "buscarVacas/entrada":
+            print("✅ Mensagem recebida no tópico buscarVacas/entrada")
+            usuario_id = payload.get("usuario_id")
+
+            dados = buscarVacas(usuario_id)
+
+            if dados:
+                resposta = {
+                    "status": "ok",
+                    "dados": formatar_lista_vacas(dados, usuario_id)
+                }
+            else:
+                resposta = {
+                    "status": "vazio",
+                    "mensagem": f"Nenhuma coleta encontrada para o produtor '{nome}'."
+                }
+
+            client.publish("buscarVacas/resultado", json.dumps(resposta, default=str))
+            print(f"[MQTT] Dados enviados para 'buscarVacas/resultado': {resposta}")
 
     except Exception as e:
         print("❌ Erro ao processar mensagem:", e)
@@ -584,6 +698,7 @@ client.username_pw_set("csilab", "WhoAmI#2023")
 client.on_message = on_message
 
 client.connect("192.168.66.50", 1883)
+
 client.subscribe("login/entrada")
 client.subscribe("cadastro/entrada")
 client.subscribe("tanque/buscar")
@@ -592,8 +707,10 @@ client.subscribe("editarUsuario/entrada")
 client.subscribe("tanqueIdentificado/entrada")
 client.subscribe("cadastroHistoricoColeta/entrada")
 client.subscribe("buscarColetas/entrada")
-
 client.subscribe("buscarDepositosProdutor/entrada")
+client.subscribe("cadastroVaca/entrada")
+
+client.subscribe("buscarVacas/entrada")
 
 print("🟢 Validador MQTT com sessão JWT rodando...")
 client.loop_forever()

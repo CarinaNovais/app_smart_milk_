@@ -67,6 +67,8 @@ class _HomeColetorPageState extends State<HomeColetorPage> {
       onCadastroAceito: () {},
       onCadastroNegado: (_) {},
       onDadosTanque: (_) {},
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
     mqtt.inicializar();
   }

@@ -34,6 +34,8 @@ class _ListaColetasPageState extends State<ListaColetasPage> {
           _carregando = false;
         });
       },
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
     mqtt.inicializar().then((_) {
       mqtt.buscarColetas();

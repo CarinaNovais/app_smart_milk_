@@ -15,7 +15,7 @@ class TanqueVisual extends StatelessWidget {
   }
 }
 
-// 🎨 Pintura do tanque
+//Pintura do tanque
 class _TanquePainter extends CustomPainter {
   final double nivel;
 

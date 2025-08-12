@@ -45,6 +45,8 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
       onLoginNegado: (_) {},
       onCadastroAceito: () {},
       onCadastroNegado: (_) {},
+      onCadastroVacaAceito: () {},
+      onCadastroVacaNegado: (_) {},
     );
 
     mqtt.inicializar();
