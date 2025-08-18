@@ -5,6 +5,7 @@ import 'package:app_smart_milk/components/cadastro_form.dart';
 import 'dart:convert';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:typed_data/typed_buffers.dart';
+import 'package:app_smart_milk/components/navbar.dart';
 
 class CadastroPage extends StatefulWidget {
   const CadastroPage({super.key});
@@ -37,7 +38,7 @@ class _CadastroPageState extends State<CadastroPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Cadastro realizado com sucesso!')),
           );
-          Navigator.pushReplacementNamed(context, '/index');
+          Navigator.pushReplacementNamed(context, '/');
         }
       },
       onCadastroNegado: (msg) {
@@ -49,6 +50,7 @@ class _CadastroPageState extends State<CadastroPage> {
       },
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
     mqtt.inicializar();
   }
@@ -113,7 +115,13 @@ class _CadastroPageState extends State<CadastroPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0097B2),
+      backgroundColor: appBlue,
+      appBar: Navbar(
+        title: 'Cadastro',
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoute: '/',
+      ),
+
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
