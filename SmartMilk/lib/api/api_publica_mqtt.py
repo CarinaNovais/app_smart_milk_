@@ -145,6 +145,30 @@ def editar_usuario():
     )
     return jsonify({"status": "atualização publicada"}), 200
 
+@app.route('/deletarVaca', methods=['POST'])
+def deletar_vaca():
+    dados = request.get_json()
+
+    usuario_id= dados.get("usuario_id")
+    vaca_id = dados.get("vaca_id")
+
+    print("📥 Dados recebidos:", dados)
+    
+    if vaca_id is None or usuario_id is None:
+        return jsonify({"erro": "Faltam dados obrigatórios"}), 400
+    
+    publish.single(
+        "deletarVaca/entrada",
+        json.dumps(dados), 
+        hostname=MQTT_BROKER,
+        port=MQTT_PORT,
+        auth={
+            'username': MQTT_USERNAME,
+            'password': MQTT_PASSWORD
+        }
+    )
+    return jsonify({"status": "atualização publicada"}), 200
+
 
 @app.route('/qrCode', methods=['POST'])
 def qrCode():
@@ -210,7 +234,7 @@ def historico_coleta():
         print(f"❌ Erro ao publicar coleta: {e}")
         return jsonify({"erro": "Erro ao publicar a coleta"}), 500
     
-@app.route('/cadastroVacas', methods=['POST'])
+@app.route('/cadastroVaca', methods=['POST'])
 def cadastroVacas():
     dados = request.get_json()
     
@@ -235,6 +259,35 @@ def cadastroVacas():
         )
         return jsonify({"status": "cadastro de vaca publicado"}), 200
     return jsonify({"erro": "faltam dados obrigatórios"}), 400
+
+@app.route('/editarVaca', methods=['POST'])
+def editar_vaca():
+    dados = request.get_json()
+
+    usuario_id = dados.get("usuario_id") #id do produtor
+    vaca_id = dados.get("vaca_id")
+    campo = dados.get("campo")     # exemplo: "senha"
+    valor = dados.get("valor")     # novo valor para o campo
+
+    print("📥 Dados recebidos:", dados)
+    
+    if not campo or not valor or not usuario_id or not vaca_id:
+        return jsonify({"erro": "Faltam dados obrigatórios"}), 400
+
+    try:
+        publish.single(
+            "editarVaca/entrada",
+            json.dumps(dados),  # envia tudo como está
+            hostname=MQTT_BROKER,
+            port=MQTT_PORT,
+            auth={
+                'username': MQTT_USERNAME,
+                'password': MQTT_PASSWORD
+            }
+        )
+    except Exception as e:
+        return jsonify({"erro": f"Falha ao publicar MQTT: {e}"}), 500
+        # return jsonify({"status": "atualização da vaca publicada"}), 200
     
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

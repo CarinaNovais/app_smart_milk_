@@ -87,6 +87,40 @@ def atualizar_usuario(campo, valor, nome, cargo, id):
         print(f"Erro ao atualizar {campo}:", erro)
         return False, f"Erro ao atualizar {campo}"
 
+def atualizar_vaca(campo, valor, id, idVaca):
+    try:
+        conn = conectar_banco()
+        cursor = conn.cursor()
+        
+        query = f"UPDATE vacas SET {campo} = %s WHERE vacas.usuario_id = %s AND vacas.id = %s"
+        cursor.execute(query, (valor, id, idVaca))
+
+        conn.commit()
+        conn.close()
+        return True, f"{campo} atualizado com sucesso"
+
+    except Exception as erro:
+        print(f"Erro ao atualizar {campo}:", erro)
+        return False, f"Erro ao atualizar {campo}"
+
+def deletar_vaca(usuario_id, vaca_id):
+    try:
+        conn = conectar_banco()
+        cursor = conn.cursor()
+        
+        query = "DELETE FROM vacas WHERE vacas.usuario_id = %s AND vacas.id = %s"
+        cursor.execute(query, (usuario_id, vaca_id))
+
+        conn.commit()
+        conn.close()
+        return True, f"Vaca com ID {vaca_id} deletada com sucesso."
+
+    except Exception as erro:
+        print(f"Erro ao deletar vaca: {erro}")
+        return False, f"Erro ao deletar vaca: {erro}"
+
+
+
 
 def cadastrar_historico_coleta(dados):
     try:
@@ -344,9 +378,13 @@ def buscarVacas(usuario_id):
         conn.close()
 
 def formatar_lista_vacas(dados, usuario_id):
+    if not dados:
+        return []
+    
     return[
         {
             "usuario_id":usuario_id,
+            "vaca_id":str(linha[0]),
             "nome": str(linha[1]),
             "brinco": str(linha[2]),
             "crias": str(linha[3]),
@@ -673,20 +711,50 @@ def on_message(client, userdata, msg):
 
             dados = buscarVacas(usuario_id)
 
-            if dados:
-                resposta = {
-                    "status": "ok",
-                    "dados": formatar_lista_vacas(dados, usuario_id)
-                }
-            else:
-                resposta = {
-                    "status": "vazio",
-                    "mensagem": f"Nenhuma coleta encontrada para o produtor '{nome}'."
-                }
+            # sempre retorna uma lista, mesmo que vazia
+            resposta = {
+            "status": "ok",
+            "dados": formatar_lista_vacas(dados, usuario_id) if dados else []
+            }
 
             client.publish("buscarVacas/resultado", json.dumps(resposta, default=str))
             print(f"[MQTT] Dados enviados para 'buscarVacas/resultado': {resposta}")
 
+
+        elif topico == "editarVaca/entrada":
+            usuario_id = payload.get("usuario_id")
+            vaca_id = payload.get("vaca_id")
+            campo = payload.get("campo") 
+            valor = payload.get("valor")
+
+            if not campo or not valor or usuario_id is None or vaca_id is None:
+                resposta = {"status": "negado", "mensagem": "Dados incompletos"}
+            else:
+                sucesso, mensagem = atualizar_vaca(campo, valor, usuario_id, vaca_id)
+                resposta = {
+                    "status": "aceito" if sucesso else "negado",
+                    "mensagem": mensagem,
+                    "campo":campo,
+                    "valor":valor
+                }
+
+            client.publish("editarVaca/resultado", json.dumps(resposta))
+            print(f"[MQTT] Atualização da vaca enviada: {resposta}")
+
+        elif topico == "deletarVaca/entrada":
+            usuario_id = payload.get("usuario_id")
+            vaca_id = payload.get("vaca_id")
+            if usuario_id is None or vaca_id is None:
+                resposta = {"status": "negado", "mensagem": "Dados incompletos"}
+            else:
+                sucesso, mensagem = deletar_vaca(usuario_id, vaca_id)
+                resposta = {
+                    "status": "aceito" if sucesso else "negado",
+                    "mensagem": mensagem,
+                }
+                client.publish("deletarVaca/resultado", json.dumps(resposta))
+                print(f"[MQTT] Solicitacao de exclusao enviada: {resposta}")
+                
     except Exception as e:
         print("❌ Erro ao processar mensagem:", e)
 
@@ -709,8 +777,10 @@ client.subscribe("cadastroHistoricoColeta/entrada")
 client.subscribe("buscarColetas/entrada")
 client.subscribe("buscarDepositosProdutor/entrada")
 client.subscribe("cadastroVaca/entrada")
-
 client.subscribe("buscarVacas/entrada")
+
+client.subscribe("editarVaca/entrada")
+client.subscribe("deletarVaca/entrada")
 
 print("🟢 Validador MQTT com sessão JWT rodando...")
 client.loop_forever()
