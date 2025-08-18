@@ -4,6 +4,8 @@ import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:intl/intl.dart';
 
+const Color appBlue = Color(0xFF0097B2);
+
 class ListaDepositosProdutorPage extends StatefulWidget {
   const ListaDepositosProdutorPage({Key? key}) : super(key: key);
 
@@ -40,6 +42,7 @@ class _ListaDepositosProdutorPageState
       },
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
     mqtt.inicializar().then((_) {
       mqtt.buscarDepositosProdutor();
@@ -58,14 +61,14 @@ class _ListaDepositosProdutorPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const Navbar(
+      backgroundColor: appBlue,
+      appBar: Navbar(
         title: 'Depositos',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoute: '/homeProdutor',
+        showEndDrawerButton: true,
       ),
+
       endDrawer: MenuDrawer(mqtt: mqtt),
       body:
           _carregando
@@ -91,20 +94,18 @@ class _ListaDepositosProdutorPageState
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
-                          Text('🧑 Produtor: ${deposito['nome']}'),
-                          Text('🧱 ID Tanque: ${deposito['idTanque']}'),
-                          Text('🗺️ ID Região: ${deposito['idRegiao']}'),
-                          Text('🧪 pH: ${deposito['ph']}'),
-                          Text(
-                            '🌡️ Temperatura: ${deposito['temperatura']} °C',
-                          ),
-                          Text('📏 Nível: ${deposito['nivel']}'),
-                          Text('💨 Amônia: ${deposito['amonia']}'),
-                          Text('🌫️ Carbono: ${deposito['carbono']}'),
-                          Text('🔥 Metano: ${deposito['metano']}'),
+                          Text('Produtor: ${deposito['nome']}'),
+                          Text('ID Tanque: ${deposito['idTanque']}'),
+                          Text('ID Região: ${deposito['idRegiao']}'),
+                          Text('pH: ${deposito['ph']}'),
+                          Text('Temperatura: ${deposito['temperatura']} °C'),
+                          Text('Nível: ${deposito['nivel']}'),
+                          Text('Amônia: ${deposito['amonia']}'),
+                          Text('Carbono: ${deposito['carbono']}'),
+                          Text('Metano: ${deposito['metano']}'),
 
                           Text(
-                            '📅 Data do Depósito: ${_formatarData(deposito['dataDeposito'])}',
+                            'Data do Depósito: ${_formatarData(deposito['dataDeposito'])}',
                           ),
                         ],
                       ),

@@ -62,6 +62,7 @@ class _LoginPageState extends State<LoginPage> {
       onCadastroNegado: (msg) {},
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
     mqtt.inicializar();
   }

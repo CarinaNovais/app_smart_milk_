@@ -49,6 +49,7 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
       },
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
     mqtt.inicializar().then((_) {
       mqtt.buscarDadosTanque();
@@ -78,14 +79,13 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: appBlue,
-      appBar: const Navbar(
-        title: 'Dados do Tanque',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
+      appBar: Navbar(
+        title: 'Dados do tanque',
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoute: '/homeProdutor', // seta vai direto para esta página
+        showEndDrawerButton: true,
       ),
+
       endDrawer: MenuDrawer(mqtt: mqtt),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

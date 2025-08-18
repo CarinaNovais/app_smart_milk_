@@ -12,7 +12,6 @@ import 'package:app_smart_milk/components/notifiers.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
-
 import 'package:path_provider/path_provider.dart';
 
 const Color appBlue = Color(0xFF0097B2);
@@ -59,24 +58,19 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       onCadastroNegado: (_) {},
       onFotoEditada: () async {
         final prefs = await SharedPreferences.getInstance();
-
-        final fotoBase64 = prefs.getString('foto');
         final userId = prefs.getInt('id');
+        // priorize o que acabou de ser enviado
+        final fotoBase64 = binarioImagem ?? prefs.getString('foto');
 
         if (fotoBase64 != null && fotoBase64.isNotEmpty && userId != null) {
-          // Salva a imagem local usando nome único por usuário
           final nomeArquivo = 'foto_usuario_$userId.png';
           final caminho = await salvarImagemLocal(fotoBase64, nomeArquivo);
-
-          // Salva o caminho no prefs com chave específica do usuário
           await prefs.setString('caminho_foto_$userId', caminho);
-
           setState(() {
             imagemPerfil = File(caminho);
             imagemMemoria = null;
           });
-
-          //Atualiza o notifier
+          // padronize notifier (ver ponto 3) — recomendo caminho
           fotoUsuarioNotifier.value = caminho;
         }
 
@@ -84,6 +78,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
           const SnackBar(content: Text('✅ Foto atualizada com sucesso!')),
         );
       },
+
       onErroFoto: (erro) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('❌ Erro ao atualizar foto: $erro')),
@@ -116,6 +111,7 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       },
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
 
     mqtt.inicializar();
@@ -167,40 +163,46 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
   Future<void> selecionarEenviarImagem() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile == null) return;
 
-    if (pickedFile != null) {
-      final file = File(pickedFile.path);
-      final bytes = await file.readAsBytes();
-      final base64Image = base64Encode(bytes);
+    final file = File(pickedFile.path);
+    final bytes = await file.readAsBytes();
+    final base64Image = base64Encode(bytes); // fonte da verdade aqui
 
-      final prefs = await SharedPreferences.getInstance();
-      final nome = prefs.getString('nome');
-      final id = prefs.getInt('id');
+    final prefs = await SharedPreferences.getInstance();
+    final nome = prefs.getString('nome');
+    final id = prefs.getInt('id');
+    if (nome == null || id == null) return;
 
-      if (nome == null || id == null || binarioImagem == null) return;
+    // 1) atualize binarioImagem ANTES de usar
+    binarioImagem = base64Image;
 
-      final nomeArquivo = 'foto_usuario_$id.png';
-      // Salva localmente a foto selecionada
-      final caminho = await salvarImagemLocal(binarioImagem!, nomeArquivo);
+    // 2) opcional: persista a foto em base64 para outras telas que ainda usam base64
+    await prefs.setString('foto', base64Image);
 
-      setState(() {
-        imagemPerfil = File(caminho);
-        imagemMemoria = null;
-        binarioImagem = base64Image;
-      });
+    // 3) salve também como arquivo local (mais leve para UI)
+    final nomeArquivo = 'foto_usuario_$id.png';
+    final caminho = await salvarImagemLocal(base64Image, nomeArquivo);
 
-      final dados = {"foto": binarioImagem, "nome": nome, "id": id};
-      final mensagem = jsonEncode(dados);
-      final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
+    setState(() {
+      imagemPerfil = File(caminho);
+      imagemMemoria = null;
+    });
 
-      mqtt.client.publishMessage(
-        'fotoAtualizada/entrada',
-        MqttQos.atMostOnce,
-        buffer,
-      );
-      await prefs.setString('caminho_foto_$id', caminho);
-      fotoUsuarioNotifier.value = caminho;
-    }
+    // 4) publique no MQTT com o MESMO base64 que você acabou de gerar
+    final dados = {"foto": base64Image, "nome": nome, "id": id};
+    final mensagem = jsonEncode(dados);
+    final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
+    mqtt.client.publishMessage(
+      'fotoAtualizada/entrada',
+      MqttQos.atMostOnce,
+      buffer,
+    );
+
+    // 5) guarde o caminho local para reusar
+    await prefs.setString('caminho_foto_$id', caminho);
+    // ver ponto 3 para padronização do notifier
+    fotoUsuarioNotifier.value = caminho; // se padronizar por caminho
   }
 
   void atualizarCampo(String campo, String valor) async {
@@ -227,7 +229,13 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
         "cargo": cargo,
       };
     } else if (cargo == 2) {
-      dados = {"nome": nome, "campo": campo, "valor": valor, "cargo": cargo};
+      dados = {
+        "nome": nome,
+        "id": id,
+        "campo": campo,
+        "valor": valor,
+        "cargo": cargo,
+      };
     } else {
       ScaffoldMessenger.of(
         context,
@@ -264,55 +272,32 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: appBlue,
-      appBar: const Navbar(
+      appBar: Navbar(
         title: 'Configurações',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoutePorCargo: {
+          0: '/homeProdutor', // se cargo == 0
+          2: '/homeColetor', // se cargo == 2
+        },
+        backPageRoute: '/homeDefault', // fallback caso cargo não esteja no mapa
+        showEndDrawerButton: true,
       ),
       endDrawer: MenuDrawer(mqtt: mqtt),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            ValueListenableBuilder<String?>(
-              valueListenable: fotoUsuarioNotifier,
-              builder: (context, caminhoFoto, _) {
-                File? imagemArquivo;
-                if (caminhoFoto != null && caminhoFoto.isNotEmpty) {
-                  imagemArquivo = File(caminhoFoto);
-                }
-
-                return Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.white,
-                      backgroundImage:
-                          imagemPerfil != null
-                              ? FileImage(imagemPerfil!)
-                              : (imagemArquivo != null
-                                  ? FileImage(imagemArquivo)
-                                  : null),
-                      child:
-                          (imagemPerfil == null && imagemArquivo == null)
-                              ? const Icon(
-                                Icons.person,
-                                size: 50,
-                                color: appBlue,
-                              )
-                              : null,
-                    ),
-                    const SizedBox(height: 8),
-                    ElevatedButton(
-                      onPressed: selecionarEenviarImagem,
-                      child: const Text('alterar foto'),
-                    ),
-                  ],
-                );
-              },
+            ElevatedButton.icon(
+              onPressed: selecionarEenviarImagem,
+              icon: const Icon(Icons.photo_camera),
+              label: const Text('Mudar foto de perfil'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: appBlue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
             ),
 
             // Nome

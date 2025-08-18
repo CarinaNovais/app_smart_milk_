@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String servidorIP = '192.168.66.20'; // ipmeunotebook
+const String servidorIP = '192.168.66.15'; // ipmeunotebook
 const String servidorPorta = '5000';
 
 String get baseURL => 'http://$servidorIP:$servidorPorta';
@@ -42,6 +42,13 @@ class AtualizacaoResultado {
   AtualizacaoResultado({required this.sucesso, required this.mensagem});
 }
 
+class AtualizacaoVacaResultado {
+  final bool sucesso;
+  final String mensagem;
+
+  AtualizacaoVacaResultado({required this.sucesso, required this.mensagem});
+}
+
 class CadastroHistoricoColetaResultado {
   final bool sucesso;
   final String mensagem;
@@ -50,6 +57,50 @@ class CadastroHistoricoColetaResultado {
     required this.sucesso,
     required this.mensagem,
   });
+}
+
+Future<AtualizacaoVacaResultado> enviarVacaAtualizacao({
+  required String campo,
+  required String valor,
+  required int vaca_id,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final usuario_id = prefs.getInt('id');
+
+  final uri = Uri.parse('${baseURL}/editarVaca');
+  final body = jsonEncode({
+    "usuario_id": usuario_id,
+    "vaca_id": vaca_id,
+    "campo": campo,
+    "valor": valor,
+  });
+
+  try {
+    final resposta = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final dados = jsonDecode(resposta.body);
+
+    if (resposta.statusCode == 200) {
+      return AtualizacaoVacaResultado(
+        sucesso: true,
+        mensagem: dados["mensagem"] ?? "Campo atualizado com sucesso!",
+      );
+    } else {
+      return AtualizacaoVacaResultado(
+        sucesso: false,
+        mensagem: dados["erro"] ?? "Erro ao atualizar campo.",
+      );
+    }
+  } catch (e) {
+    return AtualizacaoVacaResultado(
+      sucesso: false,
+      mensagem: "Erro ao conectar ao servidor.",
+    );
+  }
 }
 
 Future<AtualizacaoResultado> enviarAtualizacao({

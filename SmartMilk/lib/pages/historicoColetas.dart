@@ -3,6 +3,8 @@ import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 
+const Color appBlue = Color(0xFF0097B2);
+
 class ListaColetasPage extends StatefulWidget {
   const ListaColetasPage({Key? key}) : super(key: key);
 
@@ -36,6 +38,7 @@ class _ListaColetasPageState extends State<ListaColetasPage> {
       },
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
     mqtt.inicializar().then((_) {
       mqtt.buscarColetas();
@@ -45,14 +48,14 @@ class _ListaColetasPageState extends State<ListaColetasPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const Navbar(
-        title: 'Coletas do coletor',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
+      backgroundColor: appBlue,
+      appBar: Navbar(
+        title: 'Coletas do Coletor',
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoute: '/homeColetor',
+        showEndDrawerButton: true,
       ),
+
       endDrawer: MenuDrawer(mqtt: mqtt),
       body:
           _carregando
@@ -78,17 +81,17 @@ class _ListaColetasPageState extends State<ListaColetasPage> {
                             style: TextStyle(fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(height: 6),
-                          Text('🧑 Produtor: ${coleta['produtor']}'),
-                          Text('👤 Coletor: ${coleta['coletor']}'),
-                          Text('🧪 pH: ${coleta['ph']}'),
-                          Text('🌡️ Temperatura: ${coleta['temperatura']} °C'),
-                          Text('📏 Nível: ${coleta['nivel']}'),
-                          Text('💨 Amônia: ${coleta['amonia']}'),
-                          Text('🌫️ Carbono: ${coleta['carbono']}'),
-                          Text('🔥 Metano: ${coleta['metano']}'),
-                          Text('🧱 ID Tanque: ${coleta['idTanque']}'),
-                          Text('🗺️ ID Região: ${coleta['idRegiao']}'),
-                          Text('🚚 Placa: ${coleta['placa']}'),
+                          Text('Produtor: ${coleta['produtor']}'),
+                          Text('Coletor: ${coleta['coletor']}'),
+                          Text('pH: ${coleta['ph']}'),
+                          Text('Temperatura: ${coleta['temperatura']} °C'),
+                          Text('Nível: ${coleta['nivel']}'),
+                          Text('Amônia: ${coleta['amonia']}'),
+                          Text('Carbono: ${coleta['carbono']}'),
+                          Text('Metano: ${coleta['metano']}'),
+                          Text('ID Tanque: ${coleta['idTanque']}'),
+                          Text('ID Região: ${coleta['idRegiao']}'),
+                          Text('Placa: ${coleta['placa']}'),
                         ],
                       ),
                     ),

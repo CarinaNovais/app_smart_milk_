@@ -1,5 +1,6 @@
 //gerais
 import 'package:app_smart_milk/pages/historicoDepositosProdutor.dart';
+import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:flutter/material.dart';
 import 'package:app_smart_milk/pages/cadastro_page.dart';
 import 'package:app_smart_milk/pages/index.dart';
@@ -7,6 +8,8 @@ import 'package:app_smart_milk/pages/login_page.dart';
 import 'package:app_smart_milk/pages/perfil.dart';
 import 'package:app_smart_milk/pages/configuracoes.dart';
 import 'package:app_smart_milk/pages/resultadoQrCode.dart';
+import 'package:app_smart_milk/pages/dadosCooperativa.dart';
+import 'package:app_smart_milk/pages/listarVacas.dart';
 //produtor
 import 'package:app_smart_milk/pages/homeProdutor.dart';
 import 'package:app_smart_milk/pages/tanque_usuario.dart';
@@ -30,6 +33,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  final MQTTService mqttService = MQTTService();
+
   @override
   void initState() {
     super.initState();
@@ -55,8 +60,11 @@ class _MyAppState extends State<MyApp> {
             (context) => ListaColetasPage(), // historico coletas coletor
         '/qrCode': (context) => QRViewExample(),
         '/homeColetor': (context) => HomeColetorPage(),
-        '/resultadoQrCode': (context) => ResultadoQrCodePage(),
-        '/monitoramentoVacas': (context) => monitoramentoVacasPage(),
+        '/resultadoQrCode': (context) => ResultadoQrCodePage(mqtt: mqttService),
+        '/monitoramentoVacas':
+            (context) => monitoramentoVacasPage(mqtt: mqttService),
+        '/dadosCooperativa': (context) => DadoscooperativaPage(),
+        '/listagemVacas': (context) => ListaVacasPage(),
       },
     );
   }

@@ -1,9 +1,15 @@
 import 'package:app_smart_milk/pages/qrCode_page.dart';
 import 'package:flutter/material.dart';
 import 'package:app_smart_milk/components/my_button.dart';
+import 'package:app_smart_milk/components/navbar.dart';
+import 'package:app_smart_milk/components/menuDrawer.dart';
+import 'package:app_smart_milk/pages/mqtt_service.dart';
+
+const Color appBlue = Color(0xFF0097B2);
 
 class ResultadoQrCodePage extends StatelessWidget {
-  const ResultadoQrCodePage({super.key});
+  final MQTTService mqtt;
+  const ResultadoQrCodePage({super.key, required this.mqtt});
 
   void acaoBotaoNovaColeta(BuildContext context) {
     Navigator.pushReplacement(
@@ -15,7 +21,14 @@ class ResultadoQrCodePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0097B2),
+      backgroundColor: appBlue,
+      appBar: Navbar(
+        title: 'Coleta Enviada',
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoute: '/homeColetor', // seta vai direto para esta página
+        showEndDrawerButton: true,
+      ),
+      endDrawer: MenuDrawer(mqtt: mqtt),
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

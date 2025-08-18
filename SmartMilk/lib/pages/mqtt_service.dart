@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+// import 'dart:nativewrappers/_internal/vm/lib/ffi_allocation_patch.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mqtt_client/mqtt_server_client.dart';
@@ -22,9 +24,11 @@ class MQTTService {
   Function(String)? onErroFoto;
   late Function onCadastroVacaAceito;
   late Function(String) onCadastroVacaNegado;
+  late Function onVacaDeletada;
 
   late MqttClient client;
   late Function(String campo, String valor) onCampoAtualizado;
+  late Function(String campo, String valor) onCampoVacaAtualizado;
 
   void configurarCallbacks({
     required Function onLoginAceito,
@@ -35,29 +39,56 @@ class MQTTService {
     Function()? onFotoEditada,
     Function(String)? onErroFoto,
     Function(String campo, String valor)? onCampoAtualizado,
+    Function(String campo, String valor)? onCampoVacaAtualizado,
     Function(List<Map<String, dynamic>>)? onBuscarVacas,
     Function(List<Map<String, dynamic>>)? onBuscarColetas,
     Function(List<Map<String, dynamic>>)? onBuscarDepositosProdutor,
     required Function onCadastroVacaAceito,
     required Function(String) onCadastroVacaNegado,
+    required Function onVacaDeletada,
   }) {
     this.onLoginAceito = onLoginAceito;
     this.onLoginNegado = onLoginNegado;
     this.onCadastroAceito = onCadastroAceito;
     this.onCadastroNegado = onCadastroNegado;
-    this.onDadosTanque = onDadosTanque;
-    this.onFotoEditada = onFotoEditada;
-    this.onErroFoto = onErroFoto;
+
+    if (onDadosTanque != null) this.onDadosTanque = onDadosTanque;
+    if (onFotoEditada != null) this.onFotoEditada = onFotoEditada;
+    if (onErroFoto != null) this.onErroFoto = onErroFoto;
+
     if (onCampoAtualizado != null) this.onCampoAtualizado = onCampoAtualizado;
-    this.onBuscarColetas = onBuscarColetas;
-    this.onBuscarVacas = onBuscarVacas;
-    this.onBuscarDepositosProdutor = onBuscarDepositosProdutor;
+    if (onCampoVacaAtualizado != null)
+      this.onCampoVacaAtualizado = onCampoVacaAtualizado;
+
+    if (onBuscarColetas != null) this.onBuscarColetas = onBuscarColetas;
+    if (onBuscarVacas != null) this.onBuscarVacas = onBuscarVacas;
+    if (onBuscarDepositosProdutor != null) {
+      this.onBuscarDepositosProdutor = onBuscarDepositosProdutor;
+    }
+
     this.onCadastroVacaAceito = onCadastroVacaAceito;
     this.onCadastroVacaNegado = onCadastroVacaNegado;
+    this.onVacaDeletada = onVacaDeletada;
   }
+
+  bool _isInitialized = false;
+  bool _isConnecting = false;
+  StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _updatesSub;
 
   Future<void> inicializar() async {
     // client = MqttServerClient('192.168.66.50', 'app_smart_milk_cliente01');
+    // client = MqttServerClient(
+    //   '192.168.66.50',
+    //   'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
+    // );
+
+    if (_isInitialized &&
+        client.connectionStatus?.state == MqttConnectionState.connected) {
+      return; // já conectado
+    }
+    if (_isConnecting) return;
+    _isConnecting = true;
+
     client = MqttServerClient(
       '192.168.66.50',
       'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
@@ -103,8 +134,14 @@ class MQTTService {
         );
         client.subscribe('cadastroVaca/resultado', MqttQos.atMostOnce);
         client.subscribe('buscarVacas/resultado', MqttQos.atMostOnce);
+        client.subscribe('editarVaca/resultado', MqttQos.atMostOnce);
+        client.subscribe('deletarVaca/resultado', MqttQos.atMostOnce);
 
-        client.updates?.listen(_onMessageReceived);
+        // ❗️cancela listener anterior e cria apenas UM
+        await _updatesSub?.cancel();
+        _updatesSub = client.updates?.listen(_onMessageReceived);
+
+        _isInitialized = true;
       } else {
         print('❌ Falha ao conectar ao broker: ${connectionStatus?.state}');
         client.disconnect();
@@ -112,6 +149,8 @@ class MQTTService {
     } catch (e) {
       print('❌ Exceção ao conectar: $e');
       client.disconnect();
+    } finally {
+      _isConnecting = false;
     }
   }
 
@@ -251,6 +290,7 @@ class MQTTService {
         } else if (topic == 'cadastroVaca/resultado') {
           if (dados['status'] == 'aceito') {
             print('✅ Cadastro aceito!');
+            // unawaited(buscarVacas());
             onCadastroVacaAceito();
           } else {
             print('❌ Cadastro de Vaca negado!');
@@ -265,9 +305,33 @@ class MQTTService {
               onBuscarVacas?.call(listaVacas);
             } else {
               print('⚠️ "dados" não é uma lista.');
+              onBuscarVacas?.call(
+                [],
+              ); // garante que callback é chamado mesmo com erro
             }
           } else {
             print('❌ Erro topico buscarVacas/resultado: ${dados['mensagem']}');
+            onBuscarVacas?.call([]);
+          }
+        } else if (topic == 'editarVaca/resultado') {
+          if (dados['status'] == 'aceito') {
+            print('✅ Campo atualizado com sucesso');
+            final campo = dados['campo'] ?? '';
+            final valor = dados['valor'] ?? '';
+            if (campo.isNotEmpty && valor.isNotEmpty) {
+              onCampoVacaAtualizado(campo, valor);
+            } else {
+              print('⚠️ Resposta de atualização sem campo ou valor.');
+            }
+          } else {
+            print('❌ Falha ao atualizar campo: ${dados['mensagem']}');
+          }
+        } else if (topic == 'deletarVaca/resultado') {
+          if (dados['status'] == 'aceito') {
+            print('✅ Vaca deletada com sucesso');
+            onVacaDeletada();
+          } else {
+            print('❌ Falha ao deletar vaca: ${dados['mensagem']}');
           }
         }
       } else {

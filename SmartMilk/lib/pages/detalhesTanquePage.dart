@@ -4,6 +4,10 @@ import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:typed_data/typed_buffers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_smart_milk/components/navbar.dart';
+import 'package:app_smart_milk/components/menuDrawer.dart';
+
+const Color appBlue = Color(0xFF0097B2);
 
 class DetalhesTanquePage extends StatefulWidget {
   final String nome;
@@ -47,6 +51,7 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
       onCadastroNegado: (_) {},
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
 
     mqtt.inicializar();
@@ -92,7 +97,14 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Dados do Tanque')),
+      backgroundColor: appBlue,
+      appBar: Navbar(
+        title: 'Qr Code Resultado - Dados do Tanque',
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoute: '/homeColetor',
+        showEndDrawerButton: true,
+      ),
+      endDrawer: MenuDrawer(mqtt: mqtt),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ListView(

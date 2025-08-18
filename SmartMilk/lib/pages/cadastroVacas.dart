@@ -6,6 +6,10 @@ import 'dart:convert';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:typed_data/typed_buffers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app_smart_milk/components/navbar.dart';
+import 'package:app_smart_milk/components/menuDrawer.dart';
+
+const Color appBlue = Color(0xFF0097B2);
 
 class CadastroVacasPage extends StatefulWidget {
   const CadastroVacasPage({super.key});
@@ -17,6 +21,7 @@ class CadastroVacasPage extends StatefulWidget {
 //route é /cadastroVacas
 class _CadastroVacasPageState extends State<CadastroVacasPage> {
   bool _isLoading = false;
+  bool _navegou = false;
 
   final nomeController = TextEditingController();
   final brincoController = TextEditingController();
@@ -36,23 +41,23 @@ class _CadastroVacasPageState extends State<CadastroVacasPage> {
       onCadastroAceito: (_) {},
       onCadastroNegado: (_) {},
       onCadastroVacaAceito: () {
-        setState(() {
-          _isLoading = false;
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Vaca cadastrada com sucesso!")),
+        if (!mounted || _navegou) return;
+        _navegou = true;
+        setState(() => _isLoading = false);
+        Navigator.pushReplacementNamed(
+          context,
+          '/listagemVacas',
+          arguments: {"refresh": true, "flash": "Vaca cadastrada com sucesso!"},
         );
-
-        Navigator.pushReplacementNamed(context, '/monitoramentoVacas');
       },
       onCadastroVacaNegado: (_) {
-        setState(() {
-          _isLoading = false;
-        });
+        if (!mounted) return;
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Falha ao cadastrar vaca")),
         );
       },
+      onVacaDeletada: () {},
     );
     mqtt.inicializar();
   }
@@ -104,8 +109,6 @@ class _CadastroVacasPageState extends State<CadastroVacasPage> {
       MqttQos.atMostOnce,
       buffer,
     );
-
-    setState(() => _isLoading = false);
   }
 
   @override
@@ -115,14 +118,21 @@ class _CadastroVacasPageState extends State<CadastroVacasPage> {
     criasController.dispose();
     origemController.dispose();
     estadoController.dispose();
-    mqtt.client.disconnect();
+    // mqtt.client.disconnect();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0097B2),
+      backgroundColor: appBlue,
+      appBar: Navbar(
+        title: 'Cadastrar Vaca',
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoute: '/listagemVacas', // define a página que a seta leva
+        showEndDrawerButton: true,
+      ),
+      endDrawer: MenuDrawer(mqtt: mqtt),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(

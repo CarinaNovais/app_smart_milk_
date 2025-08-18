@@ -23,7 +23,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
   final List<GridItem> items = [
     GridItem(
       imagePath: 'lib/images/dadosCoperativa.png',
-      route: '/page1',
+      route: '/dadosCooperativa',
       legenda: 'Dados Cooperativa',
     ),
     GridItem(
@@ -66,6 +66,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       onDadosTanque: (_) {},
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
     mqtt.inicializar();
   }
@@ -89,13 +90,11 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: appBlue,
-      appBar: const Navbar(
-        title: 'Bem-vindo!',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
+      appBar: Navbar(
+        title: 'Pagina Inicial',
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        showEndDrawerButton: true,
+        showBackButton: false,
       ),
       endDrawer: MenuDrawer(mqtt: mqtt),
       body: Padding(

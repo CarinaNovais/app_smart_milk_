@@ -75,6 +75,7 @@ class _PerfilPage extends State<PerfilPage> {
       },
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
     mqtt.inicializar();
 
@@ -155,6 +156,22 @@ class _PerfilPage extends State<PerfilPage> {
 
     final nome = prefs.getString('nome');
     final id = prefs.getInt('id');
+    final caminhoLocal =
+        id != null ? prefs.getString('caminho_foto_$id') : null;
+
+    if (caminhoLocal != null &&
+        caminhoLocal.isNotEmpty &&
+        File(caminhoLocal).existsSync()) {
+      imagemPerfil = File(caminhoLocal);
+      imagemMemoria = null;
+    } else {
+      final fotoBase64 = prefs.getString('foto');
+      imagemMemoria =
+          (fotoBase64 != null && fotoBase64.isNotEmpty)
+              ? base64Decode(fotoBase64)
+              : null;
+      imagemPerfil = null;
+    }
 
     if (nome == null || id == null || binarioImagem == null) {
       print("⚠️ Dados ausentes para envio da imagem.");
@@ -253,18 +270,18 @@ class _PerfilPage extends State<PerfilPage> {
                   : null,
         ),
         const SizedBox(height: 12),
-        ElevatedButton.icon(
-          onPressed: selecionarEenviarImagem,
-          icon: const Icon(Icons.photo_camera),
-          label: const Text('Mudar foto de perfil'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: appBlue,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        ),
+        // ElevatedButton.icon(
+        //   onPressed: selecionarEenviarImagem,
+        //   icon: const Icon(Icons.photo_camera),
+        //   label: const Text('Mudar foto de perfil'),
+        //   style: ElevatedButton.styleFrom(
+        //     backgroundColor: Colors.white,
+        //     foregroundColor: appBlue,
+        //     shape: RoundedRectangleBorder(
+        //       borderRadius: BorderRadius.circular(8),
+        //     ),
+        //   ),
+        // ),
       ],
     );
   }
@@ -298,17 +315,15 @@ class _PerfilPage extends State<PerfilPage> {
       backgroundColor: appBlue,
       appBar: Navbar(
         title: 'Perfil',
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-        ),
-        onNotificationPressed: () {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Notificações zeradas')));
+        style: const TextStyle(color: Colors.white, fontSize: 20),
+        backPageRoutePorCargo: {
+          0: '/homeProdutor', // se cargo == 0
+          2: '/homeColetor', // se cargo == 2
         },
+        backPageRoute: '/homeDefault', // fallback caso cargo não esteja no mapa
+        showEndDrawerButton: true,
       ),
+
       endDrawer: MenuDrawer(mqtt: mqtt),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

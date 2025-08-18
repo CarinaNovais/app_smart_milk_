@@ -68,6 +68,7 @@ class _QRViewExampleState extends State<QRViewExample> {
       },
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
+      onVacaDeletada: () {},
     );
 
     mqtt.inicializar();
