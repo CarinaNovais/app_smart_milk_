@@ -25,19 +25,50 @@ class HomeGrid extends StatelessWidget {
       ),
       itemBuilder: (context, index) {
         final item = items[index];
-
-        final content = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: Image.asset(item.imagePath, fit: BoxFit.scaleDown)),
-            const SizedBox(height: 4),
-            Text(
-              item.legenda,
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            ),
-          ],
+        final content = Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white, // fundo branco
+            borderRadius: BorderRadius.circular(10), // cantos arredondados
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black26,
+                blurRadius: 6,
+                offset: Offset(2, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Image.asset(item.imagePath, fit: BoxFit.scaleDown),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                item.legenda,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         );
+
+        // final content = Column(
+        //   crossAxisAlignment: CrossAxisAlignment.stretch,
+        //   children: [
+        //     Expanded(child: Image.asset(item.imagePath, fit: BoxFit.scaleDown)),
+        //     const SizedBox(height: 4),
+        //     Text(
+        //       item.legenda,
+        //       textAlign: TextAlign.center,
+        //       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        //     ),
+        //   ],
+        // );
 
         if (onItemTap != null) {
           return GestureDetector(onTap: () => onItemTap!(item), child: content);
