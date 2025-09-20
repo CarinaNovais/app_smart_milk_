@@ -1,5 +1,5 @@
-import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:flutter/material.dart';
+import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:app_smart_milk/components/my_button.dart';
 import 'package:app_smart_milk/components/cadastroVaca_form.dart';
 import 'dart:convert';
@@ -9,8 +9,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 
-const Color appBlue = Color(0xFF0097B2);
-
 class CadastroVacasPage extends StatefulWidget {
   const CadastroVacasPage({super.key});
 
@@ -18,7 +16,6 @@ class CadastroVacasPage extends StatefulWidget {
   State<CadastroVacasPage> createState() => _CadastroVacasPageState();
 }
 
-//route é /cadastroVacas
 class _CadastroVacasPageState extends State<CadastroVacasPage> {
   bool _isLoading = false;
   bool _navegou = false;
@@ -58,6 +55,8 @@ class _CadastroVacasPageState extends State<CadastroVacasPage> {
         );
       },
       onVacaDeletada: () {},
+      onBuscarDevolutivas: (_) {},
+      onPegandoTanqueAceito: () {},
     );
     mqtt.inicializar();
   }
@@ -118,52 +117,66 @@ class _CadastroVacasPageState extends State<CadastroVacasPage> {
     criasController.dispose();
     origemController.dispose();
     estadoController.dispose();
-    // mqtt.client.disconnect();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: appBlue,
-      appBar: Navbar(
-        title: 'Cadastrar Vaca',
-        style: const TextStyle(color: Colors.white, fontSize: 20),
-        backPageRoute: '/listagemVacas', // define a página que a seta leva
-        showEndDrawerButton: true,
-      ),
-      endDrawer: MenuDrawer(mqtt: mqtt),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 25),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 40),
-                Image.asset('lib/images/VACALOGO.png', height: 80, width: 80),
-                const SizedBox(height: 30),
-                const Text(
-                  'Cadastrar Vaca',
-                  style: TextStyle(fontSize: 20, color: Colors.white),
-                ),
-                const SizedBox(height: 20),
-                CadastroVacaForm(
-                  nomeController: nomeController,
-                  brincoController: brincoController,
-                  criasController: criasController,
-                  origemController: origemController,
-                  estadoController: estadoController,
-                ),
-                const SizedBox(height: 25),
-                _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : MyButton(
-                      onTap: executarCadastroVaca,
-                      text: 'Cadastrar Vaca',
-                    ),
-                const SizedBox(height: 20),
-              ],
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors:
+          isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)]
+              : const [Color(0xFFB2EBF2), Color(0xFF80DEEA), Color(0xFF64B5F6)],
+    );
+
+    return Container(
+      decoration: BoxDecoration(gradient: gradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        appBar: Navbar(
+          title: 'Cadastrar Vaca',
+          style: const TextStyle(fontSize: 20), // cor aplicada pela Navbar
+          backPageRoute: '/monitoramentoVacas',
+          showEndDrawerButton: true,
+        ),
+        endDrawer: MenuDrawer(mqtt: mqtt),
+        body: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 40),
+                  Image.asset('lib/images/VACALOGO.png', height: 80, width: 80),
+                  const SizedBox(height: 30),
+                  const Text(
+                    'Cadastrar Vaca',
+                    style: TextStyle(fontSize: 20, color: Colors.white),
+                  ),
+                  const SizedBox(height: 20),
+                  CadastroVacaForm(
+                    nomeController: nomeController,
+                    brincoController: brincoController,
+                    criasController: criasController,
+                    origemController: origemController,
+                    estadoController: estadoController,
+                  ),
+                  const SizedBox(height: 25),
+                  _isLoading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : MyButton(
+                        onTap: executarCadastroVaca,
+                        text: 'Cadastrar Vaca',
+                      ),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
           ),
         ),

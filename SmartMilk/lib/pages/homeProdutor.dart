@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,9 +7,6 @@ import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:app_smart_milk/components/notifiers.dart';
-
-const Color appBlue = Color(0xFF0097B2);
-late MQTTService mqtt;
 
 class HomeProdutorPage extends StatefulWidget {
   const HomeProdutorPage({super.key});
@@ -19,8 +17,9 @@ class HomeProdutorPage extends StatefulWidget {
 
 class _HomeProdutorPageState extends State<HomeProdutorPage> {
   String nomeUsuario = '';
+  late MQTTService mqtt;
 
-  final List<GridItem> items = [
+  final List<GridItem> items = const [
     GridItem(
       imagePath: 'lib/images/dadosCoperativa.png',
       route: '/dadosCooperativa',
@@ -28,7 +27,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     ),
     GridItem(
       imagePath: 'lib/images/paginaAvisos.png',
-      route: '/page2',
+      route: '/paginaAvisos',
       legenda: 'Avisos',
     ),
     GridItem(
@@ -42,9 +41,9 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       legenda: 'Status Tanque',
     ),
     GridItem(
-      imagePath: 'lib/images/semFuncao.png',
-      route: '/',
-      legenda: 'Sem Função',
+      imagePath: 'lib/images/devolutivas.png',
+      route: '/devolutivaLaboratorio',
+      legenda: 'Devolutiva Laboratório',
     ),
     GridItem(
       imagePath: 'lib/images/monitoramentoVacas.png',
@@ -56,7 +55,8 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
   @override
   void initState() {
     super.initState();
-    carregarDadosUsuario();
+    _carregarDadosUsuario();
+
     mqtt = MQTTService();
     mqtt.configurarCallbacks(
       onLoginAceito: () {},
@@ -67,42 +67,185 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
       onVacaDeletada: () {},
+      onBuscarDevolutivas: (_) {},
+      onPegandoTanqueAceito: () {},
     );
     mqtt.inicializar();
   }
 
-  Future<void> carregarDadosUsuario() async {
+  Future<void> _carregarDadosUsuario() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
-      nomeUsuario = prefs.getString('nome') ?? 'Usuário';
+      nomeUsuario = prefs.getString('nome') ?? 'Produtor';
     });
-    //Atualiza o notifier para refletir no MenuDrawer
+    // Atualiza o notifier para refletir no MenuDrawer
     nomeUsuarioNotifier.value = nomeUsuario;
+  }
 
-    if (nomeUsuario == 'Usuário') {
-      print('⚠️ Nenhum nome encontrado na sessão.');
-    } else {
-      print('✅ Nome do usuário carregado: $nomeUsuario');
-    }
+  @override
+  void dispose() {
+    try {
+      mqtt.client.disconnect();
+    } catch (_) {}
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: appBlue,
-      appBar: Navbar(
-        title: 'Pagina Inicial',
-        style: const TextStyle(color: Colors.white, fontSize: 20),
-        showEndDrawerButton: true,
-        showBackButton: false,
-      ),
-      endDrawer: MenuDrawer(mqtt: mqtt),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: HomeGrid(
-          items: items,
-          onItemTap: (item) => Navigator.pushNamed(context, item.route),
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors:
+          isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)]
+              : const [Color(0xFFB2EBF2), Color(0xFF80DEEA), Color(0xFF64B5F6)],
+    );
+
+    return Container(
+      decoration: BoxDecoration(gradient: gradient), // gradiente fora
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        appBar: Navbar(
+          title: 'Página Inicial',
+          style: const TextStyle(fontSize: 20), // cor é aplicada pela Navbar
+          showEndDrawerButton: true,
+          showBackButton: false,
         ),
+        endDrawer: MenuDrawer(mqtt: mqtt),
+
+        body: SafeArea(
+          child: Stack(
+            children: [
+              // Blobs de fundo (sutil)
+              Positioned(
+                top: -60,
+                left: -30,
+                child: _Blob(
+                  size: 180,
+                  color:
+                      isDark
+                          ? Colors.white.withOpacity(0.22)
+                          : Colors.white.withOpacity(0.12),
+                ),
+              ),
+              Positioned(
+                bottom: -50,
+                right: -20,
+                child: _Blob(
+                  size: 160,
+                  color:
+                      isDark
+                          ? Colors.white.withOpacity(0.18)
+                          : Colors.white.withOpacity(0.10),
+                ),
+              ),
+
+              // Conteúdo
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Cabeçalho com saudação
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      //children: [
+                      //Text(
+                      //   'Olá, $nomeUsuario 👋',
+                      //   style: TextStyle(
+                      //     fontSize: 20,
+                      //     fontWeight: FontWeight.w800,
+                      //     color:
+                      //         isDark ? Colors.white : const Color(0xFF0F172A),
+                      //     letterSpacing: -0.2,
+                      //   ),
+                      // ),
+                      //   const SizedBox(height: 6),
+                      //   Opacity(
+                      //     opacity: 0.85,
+                      //     child: Text(
+                      //       'O que você quer fazer hoje?',
+                      //       style: TextStyle(
+                      //         color: isDark ? Colors.white : Colors.black87,
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ],
+                    ),
+                  ),
+
+                  // Grid dentro de um “glass card” leve
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(24),
+                              color: (isDark ? Colors.white : Colors.white)
+                                  .withOpacity(isDark ? 0.07 : 0.10),
+                              border: Border.all(
+                                color: Colors.white.withOpacity(0.22),
+                                width: 1,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.08),
+                                  blurRadius: 24,
+                                  offset: const Offset(0, 12),
+                                ),
+                              ],
+                            ),
+                            child: HomeGrid(
+                              items: items,
+                              columns: 2,
+                              onItemTap:
+                                  (item) =>
+                                      Navigator.pushNamed(context, item.route),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Blob decorativo
+class _Blob extends StatelessWidget {
+  final double size;
+  final Color color;
+  const _Blob({required this.size, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: size,
+      width: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color,
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.35),
+            blurRadius: 60,
+            spreadRadius: 10,
+          ),
+        ],
       ),
     );
   }

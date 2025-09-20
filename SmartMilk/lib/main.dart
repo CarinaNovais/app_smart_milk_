@@ -14,11 +14,15 @@ import 'package:app_smart_milk/pages/listarVacas.dart';
 import 'package:app_smart_milk/pages/homeProdutor.dart';
 import 'package:app_smart_milk/pages/tanque_usuario.dart';
 import 'package:app_smart_milk/pages/monitoramentoVacas.dart';
+import 'package:app_smart_milk/pages/devolutivaLaboratorio.dart';
 
 //coletor
 import 'package:app_smart_milk/pages/qrCode_page.dart';
 import 'package:app_smart_milk/pages/homeColetor.dart';
 import 'package:app_smart_milk/pages/historicoColetas.dart';
+import 'package:app_smart_milk/pages/encontrarColetas.dart';
+import 'package:app_smart_milk/pages/rotaTanquesSelecionados.dart';
+import 'package:app_smart_milk/pages/avisos_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +69,10 @@ class _MyAppState extends State<MyApp> {
             (context) => monitoramentoVacasPage(mqtt: mqttService),
         '/dadosCooperativa': (context) => DadoscooperativaPage(),
         '/listagemVacas': (context) => ListaVacasPage(),
+        '/devolutivaLaboratorio': (context) => ListaDevolutivaLaboratorioPage(),
+        '/encontrarColetas': (context) => EncontrarTanquesDisponiveisPage(),
+        '/rotaTanquesSelecionados': (context) => rotaTanquesSelecionadosPage(),
+        '/paginaAvisos': (context) => const AvisoSimplesPage(),
       },
     );
   }

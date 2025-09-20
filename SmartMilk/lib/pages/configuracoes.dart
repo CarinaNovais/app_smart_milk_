@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
-
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mqtt_client/mqtt_client.dart';
@@ -112,6 +112,8 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
       onVacaDeletada: () {},
+      onBuscarDevolutivas: (_) {},
+      onPegandoTanqueAceito: () {},
     );
 
     mqtt.inicializar();
@@ -270,198 +272,266 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: appBlue,
-      appBar: Navbar(
-        title: 'Configurações',
-        style: const TextStyle(color: Colors.white, fontSize: 20),
-        backPageRoutePorCargo: {
-          0: '/homeProdutor', // se cargo == 0
-          2: '/homeColetor', // se cargo == 2
-        },
-        backPageRoute: '/homeDefault', // fallback caso cargo não esteja no mapa
-        showEndDrawerButton: true,
-      ),
-      endDrawer: MenuDrawer(mqtt: mqtt),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            ElevatedButton.icon(
-              onPressed: selecionarEenviarImagem,
-              icon: const Icon(Icons.photo_camera),
-              label: const Text('Mudar foto de perfil'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: appBlue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
 
-            // Nome
-            buildEditableField(
-              controller: nomeController,
-              label: 'Nome',
-              editando: editandoNome,
-              onPressed: () {
-                setState(() {
-                  if (editandoNome) {
-                    salvarCampo(
-                      campo: "nome",
-                      valor: nomeController.text,
-                      onNotifierUpdate:
-                          () => nomeUsuarioNotifier.value = nomeController.text,
-                    );
-                  }
-                  editandoNome = !editandoNome;
-                });
-              },
-            ),
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors:
+          isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)]
+              : const [Color(0xFFB2EBF2), Color(0xFF80DEEA), Color(0xFF64B5F6)],
+    );
 
-            //campos condicionais
-            //tanque
-            if (cargo == 0) ...[
-              buildEditableField(
-                controller: idTanqueController,
-                label: 'ID do Tanque',
-                editando: editandoIdTanque,
-                onPressed: () {
-                  setState(() {
-                    if (editandoIdTanque) {
-                      salvarCampo(
-                        campo: "idtanque",
-                        valor: idTanqueController.text,
-                        onNotifierUpdate:
-                            () =>
-                                idtanqueUsuarioNotifier.value =
-                                    idTanqueController.text,
-                      );
-                    }
-                    editandoIdTanque = !editandoIdTanque;
-                  });
-                },
-              ),
-              //regiao
-              buildEditableField(
-                controller: idRegiaoController,
-                label: 'ID da Região',
-                editando: editandoIdRegiao,
-                onPressed: () {
-                  setState(() {
-                    if (editandoIdRegiao) {
-                      salvarCampo(
-                        campo: "idregiao",
-                        valor: idRegiaoController.text,
-                        onNotifierUpdate:
-                            () =>
-                                idRegiaoUsuarioNotifier.value =
-                                    idRegiaoController.text,
-                      );
-                    }
-                    editandoIdRegiao = !editandoIdRegiao;
-                  });
-                },
-              ),
-              //placa
-            ] else if (cargo == 2) ...[
-              buildEditableField(
-                controller: placaController,
-                label: 'Placa do Veículo',
-                editando: editandoPlaca,
-                onPressed: () {
-                  setState(() {
-                    if (editandoPlaca) {
-                      salvarCampo(
-                        campo: "placa",
-                        valor: placaController.text,
-                        onNotifierUpdate:
-                            () =>
-                                placaUsuarioNotifier.value =
-                                    placaController.text,
-                      );
-                    }
-                    editandoPlaca = !editandoPlaca;
-                  });
-                },
-              ),
-            ],
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+      ), // gradiente FORA do Scaffold
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
 
-            // Contato
-            buildEditableField(
-              controller: contatoController,
-              label: 'Contato',
-              keyboardType: TextInputType.phone,
-              editando: editandoContato,
-              onPressed: () {
-                setState(() {
-                  if (editandoContato) {
-                    salvarCampo(
-                      campo: "contato",
-                      valor: contatoController.text,
-                      onNotifierUpdate:
-                          () =>
-                              contatoUsuarioNotifier.value =
-                                  contatoController.text,
-                    );
-                  }
-                  editandoContato = !editandoContato;
-                });
-              },
-            ),
+        appBar: Navbar(
+          title: 'Configurações',
+          style: const TextStyle(fontSize: 20), // cor é aplicada na Navbar
+          backPageRoutePorCargo: {0: '/homeProdutor', 2: '/homeColetor'},
+          backPageRoute: '/homeDefault',
+          showEndDrawerButton: true,
+        ),
+        endDrawer: MenuDrawer(mqtt: mqtt),
 
-            // Senha
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: senhaController,
-                    enabled: editandoSenha,
-                    obscureText: !senhaVisivel,
-                    decoration: InputDecoration(
-                      labelText: 'Senha',
-                      filled: true,
-                      fillColor: Colors.white,
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          senhaVisivel
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _GlassSection(
+                child: Center(
+                  child: GestureDetector(
+                    onTap: selecionarEenviarImagem,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(
+                          (MediaQuery.of(context).platformBrightness ==
+                                  Brightness.dark)
+                              ? 0.10
+                              : 0.16,
                         ),
-                        onPressed: () {
-                          setState(() {
-                            senhaVisivel = !senhaVisivel;
-                          });
-                        },
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.22),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.photo_camera_outlined,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Mudar foto de perfil',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      if (editandoSenha) {
-                        salvarCampo(
-                          campo: "senha",
-                          valor: senhaController.text,
-                          onNotifierUpdate:
-                              () =>
-                                  senhaUsuarioNotifier.value =
-                                      senhaController.text,
-                        );
-                      }
-                      editandoSenha = !editandoSenha;
-                    });
-                  },
-                  child: Text(editandoSenha ? 'Salvar' : 'Editar'),
+              ),
+
+              const SizedBox(height: 16),
+
+              // Card: dados (nome, contato e condicionais)
+              _GlassSection(
+                child: Column(
+                  children: [
+                    // Nome
+                    buildEditableField(
+                      controller: nomeController,
+                      label: 'Nome',
+                      editando: editandoNome,
+                      onPressed: () {
+                        setState(() {
+                          if (editandoNome) {
+                            salvarCampo(
+                              campo: "nome",
+                              valor: nomeController.text,
+                              onNotifierUpdate:
+                                  () =>
+                                      nomeUsuarioNotifier.value =
+                                          nomeController.text,
+                            );
+                          }
+                          editandoNome = !editandoNome;
+                        });
+                      },
+                    ),
+
+                    // Campos condicionais
+                    if (cargo == 0) ...[
+                      buildEditableField(
+                        controller: idTanqueController,
+                        label: 'ID do Tanque',
+                        editando: editandoIdTanque,
+                        onPressed: () {
+                          setState(() {
+                            if (editandoIdTanque) {
+                              salvarCampo(
+                                campo: "idtanque",
+                                valor: idTanqueController.text,
+                                onNotifierUpdate:
+                                    () =>
+                                        idtanqueUsuarioNotifier.value =
+                                            idTanqueController.text,
+                              );
+                            }
+                            editandoIdTanque = !editandoIdTanque;
+                          });
+                        },
+                      ),
+                      buildEditableField(
+                        controller: idRegiaoController,
+                        label: 'ID da Região',
+                        editando: editandoIdRegiao,
+                        onPressed: () {
+                          setState(() {
+                            if (editandoIdRegiao) {
+                              salvarCampo(
+                                campo: "idregiao",
+                                valor: idRegiaoController.text,
+                                onNotifierUpdate:
+                                    () =>
+                                        idRegiaoUsuarioNotifier.value =
+                                            idRegiaoController.text,
+                              );
+                            }
+                            editandoIdRegiao = !editandoIdRegiao;
+                          });
+                        },
+                      ),
+                    ] else if (cargo == 2) ...[
+                      buildEditableField(
+                        controller: placaController,
+                        label: 'Placa do Veículo',
+                        editando: editandoPlaca,
+                        onPressed: () {
+                          setState(() {
+                            if (editandoPlaca) {
+                              salvarCampo(
+                                campo: "placa",
+                                valor: placaController.text,
+                                onNotifierUpdate:
+                                    () =>
+                                        placaUsuarioNotifier.value =
+                                            placaController.text,
+                              );
+                            }
+                            editandoPlaca = !editandoPlaca;
+                          });
+                        },
+                      ),
+                    ],
+
+                    // Contato
+                    buildEditableField(
+                      controller: contatoController,
+                      label: 'Contato',
+                      keyboardType: TextInputType.phone,
+                      editando: editandoContato,
+                      onPressed: () {
+                        setState(() {
+                          if (editandoContato) {
+                            salvarCampo(
+                              campo: "contato",
+                              valor: contatoController.text,
+                              onNotifierUpdate:
+                                  () =>
+                                      contatoUsuarioNotifier.value =
+                                          contatoController.text,
+                            );
+                          }
+                          editandoContato = !editandoContato;
+                        });
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 20),
-          ],
+              ),
+
+              const SizedBox(height: 16),
+
+              // Card: senha
+              _GlassSection(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: senhaController,
+                        enabled: editandoSenha,
+                        obscureText: !senhaVisivel,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Senha',
+                          labelStyle: const TextStyle(color: Color(0xFFF5F5F5)),
+                          enabledBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFFF5F5F5)),
+                          ),
+                          focusedBorder: const UnderlineInputBorder(
+                            borderSide: BorderSide(color: Color(0xFFF5F5F5)),
+                          ),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              senhaVisivel
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: Colors.white,
+                            ),
+                            onPressed:
+                                () => setState(
+                                  () => senhaVisivel = !senhaVisivel,
+                                ),
+                          ),
+                        ),
+                        keyboardType: TextInputType.visiblePassword,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _EditSaveButton(
+                      isEditing: editandoSenha,
+                      onPressed: () {
+                        setState(() {
+                          if (editandoSenha) {
+                            salvarCampo(
+                              campo: "senha",
+                              valor: senhaController.text,
+                              onNotifierUpdate:
+                                  () =>
+                                      senhaUsuarioNotifier.value =
+                                          senhaController.text,
+                            );
+                          }
+                          editandoSenha = !editandoSenha;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -475,29 +545,84 @@ class _ConfiguracoesPage extends State<ConfiguracoesPage> {
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              enabled: editando,
-              keyboardType: keyboardType,
-              decoration: InputDecoration(
-                labelText: label,
-                filled: true,
-                fillColor: Colors.white,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _GlassSection(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                enabled: editando,
+                keyboardType: keyboardType,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: '',
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFF5F5F5)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFF5F5F5)),
+                  ),
+                  hintText: '',
+                  hintStyle: TextStyle(color: Color(0xFFF5F5F5)),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton(
-            onPressed: onPressed,
-            child: Text(editando ? 'Salvar' : 'Editar'),
-          ),
-        ],
+            const SizedBox(width: 10),
+            _EditSaveButton(isEditing: editando, onPressed: onPressed),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _GlassSection extends StatelessWidget {
+  final Widget child;
+  const _GlassSection({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.white).withOpacity(
+              isDark ? 0.08 : 0.14,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withOpacity(0.22), width: 1),
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+class _EditSaveButton extends StatelessWidget {
+  final bool isEditing;
+  final VoidCallback onPressed;
+  const _EditSaveButton({required this.isEditing, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: appBlue,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        textStyle: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+      child: Text(isEditing ? 'Salvar' : 'Editar'),
     );
   }
 }

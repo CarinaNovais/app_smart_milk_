@@ -1,10 +1,24 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from werkzeug.exceptions import RequestEntityTooLarge
+from flask_cors import CORS
+import mysql.connector
 import paho.mqtt.publish as publish
-import json 
+import json
 import base64
+import os
 
 app = Flask(__name__)
+CORS(app)
+
+API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5000")
+
+def conectar_banco():
+    return mysql.connector.connect(
+        host="192.168.66.13", #ip computador joao
+        user="root",
+        password="root",
+        database="mimosa"
+    )
 
 MQTT_BROKER = "192.168.66.50"
 MQTT_PORT = 1883
@@ -288,6 +302,132 @@ def editar_vaca():
     except Exception as e:
         return jsonify({"erro": f"Falha ao publicar MQTT: {e}"}), 500
         # return jsonify({"status": "atualização da vaca publicada"}), 200
+
+#atualizar status do tanque
+@app.route('/atualizarStatusTanque', methods=['POST'])
+def atualizar_status_tanque():
+    dados = request.get_json()
+    idtanque = dados.get("idtanque")
+    campo = dados.get("campo")
+    valor = dados.get("valor")
+
+    if not idtanque or not campo or not valor:
+        return jsonify({"erro": "Faltam dados obrigatórios"}), 400
     
+    publish.single(
+        "atualizarStatusTanque/entrada",
+        json.dumps(dados),
+        hostname=MQTT_BROKER,
+        port=MQTT_PORT,
+        auth={
+            'username': MQTT_USERNAME,
+            'password': MQTT_PASSWORD
+        }
+    )
+    return jsonify({"status": "atualização do status do tanque publicada"}), 200    
+@app.route('/pegandoTanque', methods=['POST'])
+def pegando_tanque():
+    dados = request.get_json()
+    idregiao = dados.get("idregiao")
+    idtanque = dados.get("idtanque")
+    produtor_id = dados.get("produtor_id")
+    nome = dados.get("nome")
+    coletor_id = dados.get("coletor_id")
+
+    if  not idtanque or not idregiao or not produtor_id or not nome or not coletor_id:
+        return jsonify({"erro": "Faltam dados obrigatórios"}), 400
+
+    publish.single(
+        "pegandoTanque/entrada",
+        json.dumps(dados),
+        hostname=MQTT_BROKER,
+        port=MQTT_PORT,
+        auth={'username': MQTT_USERNAME,'password': MQTT_PASSWORD}
+    )
+    return jsonify({"status": "pegando tanque publicada"}), 200
+
+
+# =========================
+# HTTP direto p/ Avisos (sem MQTT)
+# =========================
+
+
+# @app.route("/aviso")
+# def aviso_unico():
+#     idtanque = request.args.get("idtanque", type=int)
+#     idregiao = request.args.get("idregiao", type=int)
+
+#     if idtanque is None or idregiao is None:
+#         return jsonify({"erro": "informe idtanque e idregiao"}), 400
+
+#     cn = cur = None
+#     try:
+#         cn = conectar_banco()
+#         cur = cn.cursor()
+#         # pega o primeiro que encontrar 
+#         cur.execute("""
+#             SELECT publicacao
+#             FROM `id`
+#             WHERE idtanque=%s OR idregiao=%s
+#             LIMIT 1
+#         """, (idtanque, idregiao))
+#         row = cur.fetchone()
+#         if not row or not row[0]:
+#             return jsonify({"erro": "nenhuma imagem encontrada"}), 404
+
+#         blob = row[0]
+#         # troque para "image/jpeg" se as imagens forem JPEG e etc
+#         return Response(blob, mimetype="image/png")
+#     except Exception as e:
+#         print("erro /aviso:", e)
+#         return jsonify({"erro": "falha interna"}), 500
+#     finally:
+#         if cur: cur.close()
+#         if cn: cn.close()
+@app.route("/aviso")
+def aviso_unico():
+    idtanque = request.args.get("idtanque", type=int)
+    idregiao = request.args.get("idregiao", type=int)
+    if idtanque is None or idregiao is None:
+        return jsonify({"erro": "informe idtanque e idregiao"}), 400
+
+    cn = cur = None
+    try:
+        cn = conectar_banco()
+        # BLOB em bytes puros
+        cur = cn.cursor(raw=True)
+
+        cur.execute("""
+            SELECT publicacao
+            FROM `id`
+            WHERE idtanque = %s AND idregiao = %s
+            LIMIT 1
+        """, (idtanque, idregiao))
+        row = cur.fetchone()
+
+        if not row or not row[0]:
+            return jsonify({"erro": "nenhuma imagem encontrada"}), 404
+
+        blob = row[0]
+        # força tipo bytes (caso venha memoryview/bytearray)
+        try:
+            blob = bytes(blob)
+        except Exception as conv_err:
+            print("[/aviso] erro convertendo blob para bytes:", conv_err)
+            return jsonify({"erro": "imagem inválida no banco"}), 500
+
+        resp = Response(blob, mimetype="image/png")  # PNG
+        resp.headers["Content-Length"] = str(len(blob))
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        return resp
+
+    except Exception as e:
+        print("erro /aviso:", repr(e))
+        return jsonify({"erro": "falha interna"}), 500
+    finally:
+        if cur: cur.close()
+        if cn: cn.close()
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)

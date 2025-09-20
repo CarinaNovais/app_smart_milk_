@@ -1,9 +1,12 @@
+from calendar import c
 import paho.mqtt.client as mqtt
 import mysql.connector
 import json
 import jwt
 import datetime
 import base64
+
+
 
 #Configurações do JWT
 JWT_SECRET = 'mimosa' #chave_secreta_aqui
@@ -46,7 +49,7 @@ def verificar_login(nome, senha, cargo):
             return resultado
         
         elif cargo == 2:
-            consulta ="""SELECT usuario.id, usuario.nome, usuario.senha, coletores.placa, usuario.contato, usuario.foto FROM usuario JOIN coletores ON coletores.coletor = usuario.nome WHERE usuario.nome = %s AND usuario.senha = %s AND usuario.cargo = %s"""
+            consulta ="""SELECT usuario.id, usuario.nome, usuario.senha,usuario.idregiao, coletores.placa, usuario.contato, usuario.foto FROM usuario JOIN coletores ON coletores.coletor = usuario.nome WHERE usuario.nome = %s AND usuario.senha = %s AND usuario.cargo = %s"""
             cursor.execute(consulta, (nome, senha, cargo))
             resultado = cursor.fetchone()
             conn.close()
@@ -119,20 +122,43 @@ def deletar_vaca(usuario_id, vaca_id):
         print(f"Erro ao deletar vaca: {erro}")
         return False, f"Erro ao deletar vaca: {erro}"
 
-
-
-
-def cadastrar_historico_coleta(dados):
+#status- (a ser analisado)
+def atualizar_status_tanque(idtanque, campo, valor):
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
 
-        insert = """
-        INSERT INTO coleta_tanque
-        (produtor, idTanque, idRegiao, ph, temperatura, nivel, amonia, carbono, metano, coletor, placa)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,%s,%s)
-        """
+        query = f"UPDATE tanque SET {campo} = %s WHERE idtanque = %s"
+        cursor.execute(query, (valor, idtanque))
 
+        conn.commit()
+        conn.close()
+        return True, f"{campo} atualizado com sucesso"
+
+    except Exception as erro:
+        print(f"Erro ao atualizar {campo}:", erro)
+        return False, f"Erro ao atualizar {campo}"
+
+def cadastrar_historico_coleta(dados):
+    conn = None
+    cursor = None
+    try:
+        # validação mínima
+        # required = ["nome","idtanque","idregiao","ph","temperatura","nivel",
+        #             "amonia","carbono","metano","coletor","placa"]
+        # faltando = [k for k in required if k not in dados]
+        # if faltando:
+        #     return False, f"Campos obrigatórios ausentes: {', '.join(faltando)}"
+
+        conn = conectar_banco()
+        cursor = conn.cursor()
+
+        insert_sql = """
+            INSERT INTO coleta_tanque
+                (produtor, idtanque, idregiao, ph, temperatura, nivel,
+                 amonia, carbono, metano, coletor, placa)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
         valores = (
             dados["nome"],
             dados["idtanque"],
@@ -143,26 +169,50 @@ def cadastrar_historico_coleta(dados):
             dados["amonia"],
             dados["carbono"],
             dados["metano"],
-            dados['coletor'],
-            dados['placa'],
+            dados["coletor"],
+            dados["placa"],
         )
+        cursor.execute(insert_sql, valores)
 
-        cursor.execute(insert, valores)
+        update_sql = """
+            UPDATE tanque
+               SET status_tanque = %s
+             WHERE idtanque = %s AND idregiao = %s
+        """
+        cursor.execute(update_sql, ('coletado', dados["idtanque"], dados["idregiao"]))
 
-        #verifica se o nome do coletor corresponde
-        consulta_nome = """SELECT nome FROM usuario
-        WHERE idtanque = %s AND idregiao = %s"""
-        cursor.execute(consulta_nome,(dados["idtanque"], dados["idregiao"]))
-        resultado = cursor.fetchone()
-        
+        # Se precisar zerar campos do tanque após coleta, descomente e mantenha padronização:
+        # cursor.execute("""
+        #     UPDATE tanque
+        #        SET ph=NULL, temperatura=NULL, nivel=NULL, amonia=NULL,
+        #            carbono=NULL, metano=NULL
+        #      WHERE idtanque=%s AND idregiao=%s
+        # """, (dados["idtanque"], dados["idregiao"]))
+
         conn.commit()
-        cursor.close()
-        conn.close()
         return True, "Cadastro de coleta realizado com sucesso"
-    
-    except Exception as erro:
-        print("Erro ao cadastrar coleta:", erro)
-        return False, "Erro ao cadastrar coleta"
+
+    except Exception as e:
+        if conn:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+        # Em prod, logue 'e' ao invés de expor:
+        return False, f"Erro ao cadastrar coleta: {e}"
+
+    finally:
+        if cursor:
+            try:
+                cursor.close()
+            except Exception:
+                pass
+        if conn:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
 
 def cadastrar_usuario(nome, senha, idtanque, idregiao,  cargo, contato, foto_bytes=None):
     try:
@@ -210,7 +260,6 @@ def atualizarFoto(foto_bytes, nome, idusuario): #verificar se esta puxando id do
     except Exception as erro:
         print("Erro ao atualizar foto:", erro)
         return False, "Erro ao atualizar foto"
-
 
 def buscarDadosTanque(nome, idtanque, idregiao):
     try:
@@ -357,6 +406,37 @@ def cadastrar_vaca(nome, brinco, crias, origem,estado,usuario_id):
         print("Erro ao cadastrar vaca:", erro)
         return False, "Erro ao cadastrar vaca"
 
+def buscarDevolutivas(idtanque):
+    try:
+        print("Id tanque recebido para busca:", idtanque)
+        conn = conectar_banco()
+        cursor = conn.cursor()
+        
+        query = """SELECT ld.*
+            FROM lab_devolutiva AS ld
+            JOIN coleta_tanque AS ct
+            ON ct.id = ld.coleta_id
+            WHERE ct.idTanque = %s;
+            """
+
+        cursor.execute(query, (idtanque,))
+        resultado = cursor.fetchall()
+        print(f"🔎 {len(resultado)} resultados encontrados.")
+        conn.close()
+        return resultado if resultado else None
+    except Exception as erro:
+        print("Erro ao buscar devolutivas:", erro)
+        return None
+    finally:
+        try:
+            cursor.close()
+        except Exception:
+            pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+
 def buscarVacas(usuario_id): 
     try:
         print("Id recebido para busca:", usuario_id)
@@ -364,7 +444,6 @@ def buscarVacas(usuario_id):
         conn = conectar_banco()
         cursor = conn.cursor()
        
-
         query = """SELECT * FROM vacas WHERE usuario_id = %s"""
         cursor.execute(query, (usuario_id,))
         resultado = cursor.fetchall()
@@ -376,6 +455,52 @@ def buscarVacas(usuario_id):
         return None
     finally:
         conn.close()
+def buscarTanquesDisponiveis(idregiao):
+    try:
+        print("Id regiao do coletor recebido:", idregiao)
+
+        conn = conectar_banco()
+        cursor = conn.cursor()
+
+        query ="""
+        SELECT
+            t.idtanque,
+            t.idregiao,
+            t.status_tanque,
+            u.id   AS produtor_id,
+            u.nome AS produtor
+        FROM tanque AS t
+        LEFT JOIN usuario AS u
+               ON u.idregiao = t.idregiao
+        WHERE t.idregiao = %s
+          AND t.status_tanque = 'livre'
+        """
+        cursor.execute(query, (idregiao,))
+        resultado = cursor.fetchall()
+        print(f"🔎 {len(resultado)} resultados encontrados.")
+
+        return resultado if resultado else None
+    except Exception as erro:
+        print("Erro ao buscar tanques disponiveis:", erro)
+        return None
+    finally:
+        conn.close()
+
+def formatar_lista_tanques_disponiveis(dados):
+    if not dados:
+        return []
+    return[
+        {
+            "idtanque": str(linha[0]),
+            "idregiao": str(linha[1]),
+            "status_tanque": str(linha[2]),
+            "produtor_id": str(linha[3]),
+            "nome": str(linha[4]),
+        
+        }
+        for linha in dados
+    #quando ver q ta disponivel status'Livre' vai mudar para a ser coletado
+    ]
 
 def formatar_lista_vacas(dados, usuario_id):
     if not dados:
@@ -394,6 +519,144 @@ def formatar_lista_vacas(dados, usuario_id):
         }
         for linha in dados
     ]
+def formatar_devolutivas(dados, idTanque):
+    """
+    Fun o que formata a lista de devolutivas recebida do banco de dados
+    para o formato JSON esperado pela aplicacao.
+    """
+    if not dados:
+        return []
+    return[
+        {
+    "id": str(linha[0]),
+    "coleta_id": str(linha[1]),
+    "gordura": str(linha[2]),
+    "proteina": str(linha[3]),
+    "lactose": str(linha[4]),
+    "solidos_totais": str(linha[5]),
+    "solidos_nao_gord": str(linha[6]),
+    "densidade": str(linha[7]),
+    "crioscopia": str(linha[8]),
+    "ph": str(linha[9]),
+    "cbt": str(linha[10]),
+    "ccs": str(linha[11]),
+    "patogenos": str(linha[12]),
+    "antibioticos_pos": str(linha[13]),
+    "antibioticos_desc": str(linha[14]),
+    "residuos_quimicos": str(linha[15]),
+    "aflatoxina_m1": str(linha[16]),
+    "estabilidade_alc": str(linha[17]),
+    "indice_acidez": str(linha[18]),
+    "tempo_reduc_azul": str(linha[19]),
+    "valor_litro": str(linha[20]),
+    "laboratorio": str(linha[21]),
+    "laudo_data": str(linha[22]),
+    "observacoes": str(linha[23]),
+    "created_at": str(linha[24]),
+    "updated_at": str(linha[25])
+                }
+        for linha in dados
+    ]
+
+def pegando_tanque_cad(idregiao, idtanque, produtor_id, nome, coletor_id):
+    # 
+    # Atualiza o tanque para 'a_ser_coletado' e cria um registro em tanque_selecionado.
+    # Retorna (True, dados) em sucesso ou (False, mensagem) em erro.
+    # 
+    try:
+        conn = conectar_banco()
+        cursor = conn.cursor()
+
+        # 1) Atualiza status do tanque
+        cursor.execute("""
+            UPDATE tanque
+               SET status_tanque = %s
+             WHERE idtanque = %s AND idregiao = %s
+        """, ('a_ser_coletado', idtanque, idregiao))
+
+        # 2) Registra em tanque_selecionado
+        cursor.execute("""
+            INSERT INTO tanque_selecionado
+                (idregiao, idtanque, produtor_id, nome, created_at,coletor_id)
+            VALUES
+                (%s, %s, %s, %s, NOW(),%s)
+        """, (idregiao, idtanque, produtor_id, nome,coletor_id))
+
+        novo_id = cursor.lastrowid
+        conn.commit()
+
+        dados = {
+            "registro_id": novo_id,
+            "idregiao": int(idregiao) if idregiao is not None else None,
+            "idtanque": int(idtanque) if idtanque is not None else None,
+            "produtor_id": None if produtor_id is None else int(produtor_id),
+            "nome": nome,
+            "status_tanque": "a_ser_coletado",
+            "coletor_id": None if coletor_id is None else int(coletor_id),
+        }
+        return True, dados
+
+    except Exception as erro:
+        try:
+            if conn: conn.rollback()
+        except: 
+            pass
+        return False, f"Erro ao reservar tanque: {erro}"
+
+    finally:
+        try:
+            if cursor: cursor.close()
+        except: 
+            pass
+        try:
+            if conn: conn.close()
+        except:  
+            pass
+
+def buscarTanquesSelecionados(coletor_id):
+    try:
+        print("Id recebido para busca de tanques selecionados para ROTAS:", coletor_id)
+
+        conn = conectar_banco()
+        cursor = conn.cursor()
+       
+        query = """
+SELECT
+            ts.id, ts.idregiao, ts.idtanque, ts.produtor_id, ts.nome, ts.created_at, ts.coletor_id
+        FROM tanque_selecionado AS ts
+        JOIN tanque AS t
+          ON t.idtanque = ts.idtanque
+         AND t.idregiao = ts.idregiao
+        WHERE ts.coletor_id = %s
+          AND t.status_tanque = 'a_ser_coletado'"""
+        cursor.execute(query, (coletor_id,))
+        resultado = cursor.fetchall()
+        print(f"🔎 {len(resultado)} resultados encontrados.")
+
+        return resultado if resultado else None
+    except Exception as erro:
+        print("Erro ao buscar tanques selecionados:", erro)
+        return None
+    finally:
+        conn.close()
+
+def formatar_lista_tanques_selecionados(dados, coletor_id):
+    if not dados:
+        return []
+    return[
+        {
+            "id": str(linha[0]),
+            "idregiao": str(linha[1]),
+            "idtanque": str(linha[2]),
+            "produtor_id": str(linha[3]),
+            "nome": str(linha[4]),
+            "created_at": str(linha[5]),
+            "coletor_id": coletor_id,
+        
+        }
+        for linha in dados
+    ]
+
 #funcao que trata todas as mensagens recebidas
 def on_message(client, userdata, msg):
     try:
@@ -435,7 +698,7 @@ def on_message(client, userdata, msg):
                 
                 elif cargo == 2:
                     # coletor
-                    foto_bytes = resultado[5]
+                    foto_bytes = resultado[6]
                     if foto_bytes:
                         foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
                     else:
@@ -448,8 +711,9 @@ def on_message(client, userdata, msg):
                         "id":resultado[0],
                         "nome": resultado[1],
                         "senha": resultado[2],
-                        "placa": resultado[3],
-                        "contato":resultado[4],
+                        "idregiao": resultado[3],
+                        "placa": resultado[4],
+                        "contato":resultado[5],
                         "foto":foto_base64,
                         "cargo":cargo
                     }
@@ -501,7 +765,7 @@ def on_message(client, userdata, msg):
             nome = payload.get("nome")
             idtanque = payload.get("idtanque")
             idregiao = payload.get("idregiao")
-            dados = buscarDadosTanque(nome, idtanque,idregiao)
+            dados = buscarDadosTanque(nome,idtanque,idregiao)
 
             if dados:
                 resposta = {
@@ -754,7 +1018,109 @@ def on_message(client, userdata, msg):
                 }
                 client.publish("deletarVaca/resultado", json.dumps(resposta))
                 print(f"[MQTT] Solicitacao de exclusao enviada: {resposta}")
-                
+
+        elif topico == "buscarDevolutivas/entrada":
+            idtanque = payload.get("idtanque")
+            dados = buscarDevolutivas(idtanque)
+            if dados:
+                resposta = {
+                    "status": "ok",
+                    "dados": formatar_devolutivas(dados, idtanque) if dados else []
+                }
+            else:
+                resposta = {
+                    "status": "vazio",
+                    "mensagem": "Nenhuma devolutiva encontrada"
+                }
+
+            client.publish("buscarDevolutivas/resultado", json.dumps(resposta, default=str))
+            print(f"[MQTT] Dados enviados para 'buscarDevolutivas/resultado': {resposta}")
+            
+        elif topico == "atualizarStatusTanque/entrada":
+            idtanque = payload.get("idtanque")
+            campo = payload.get("campo")
+            valor = payload.get("valor")
+            sucesso, mensagem = atualizar_status_tanque(idtanque, campo, valor)
+            resposta = {
+                "status": "aceito" if sucesso else "negado",
+                "mensagem": mensagem,
+                "campo": campo,
+                "valor": valor
+            }
+            client.publish("atualizarStatusTanque/resultado", json.dumps(resposta))
+            print(f"[MQTT] Atualização de status do tanque enviada: {resposta}")
+
+        elif topico == "buscarTanquesDisponiveis/entrada":
+            idregiao = payload.get("idregiao")
+            dados = buscarTanquesDisponiveis(idregiao)
+            if dados:
+                resposta = {
+                    "status": "ok",
+                    "dados": formatar_lista_tanques_disponiveis(dados) if dados else []
+                }
+            else:
+                resposta = {
+                    "status": "vazio",
+                    "mensagem": "Nenhum tanque disponivel"
+                }
+
+            client.publish("buscarTanquesDisponiveis/resultado", json.dumps(resposta, default=str))
+            print(f"[MQTT] Dados enviados para 'buscarTanquesDisponiveis/resultado': {resposta}")
+        elif topico == "pegandoTanque/entrada":
+          
+            idregiao = payload.get("idregiao")
+            idtanque = payload.get("idtanque")
+            produtor_id = payload.get("produtor_id")
+            nome = payload.get("nome")
+            coletor_id = payload.get("coletor_id")
+
+            try:
+                idregiao = int(idregiao)
+                idtanque = int(idtanque)
+
+                if produtor_id in (None, "", "None"):
+                    produtor_id = None
+                else:
+                    produtor_id = int(produtor_id)
+
+                if coletor_id in (None, "", "None"):
+                    coletor_id = None
+                else:
+                    coletor_id = int(coletor_id)
+
+            except (TypeError, ValueError):
+                resposta = {"status": "negado", "mensagem": "IDs inválidos"}
+                client.publish("pegandoTanque/resultado", json.dumps(resposta))
+                print(f"[MQTT] pegandoTanque/resultado: {resposta}")
+                return
+
+            ok, out = pegando_tanque_cad(idregiao, idtanque, produtor_id, nome, coletor_id)
+
+            if ok:
+                resposta = {"status": "ok", "mensagem": "Coleta selecionada", "dados": out}
+            else:
+                resposta = {"status": "negado", "mensagem": out}
+
+            client.publish("pegandoTanque/resultado", json.dumps(resposta))
+            print(f"[MQTT] pegandoTanque/resultado: {resposta}")
+
+        elif topico == "buscarTanquesSelecionados/entrada":
+            coletor_id = payload.get("coletor_id")
+            dados = buscarTanquesSelecionados(coletor_id)
+            if dados:
+                resposta = {
+                    "status": "ok",
+                    "dados": formatar_lista_tanques_selecionados(dados, coletor_id) if dados else []
+                }
+            else:
+                resposta = {
+                    "status": "vazio",
+                    "mensagem": "Nenhum tanque selecionado"
+                }
+
+            client.publish("buscarTanquesSelecionados/resultado", json.dumps(resposta, default=str))
+            print(f"[MQTT] Dados enviados para 'buscarTanquesSelecionados/resultado': {resposta}")
+
     except Exception as e:
         print("❌ Erro ao processar mensagem:", e)
 
@@ -778,9 +1144,15 @@ client.subscribe("buscarColetas/entrada")
 client.subscribe("buscarDepositosProdutor/entrada")
 client.subscribe("cadastroVaca/entrada")
 client.subscribe("buscarVacas/entrada")
-
 client.subscribe("editarVaca/entrada")
 client.subscribe("deletarVaca/entrada")
+client.subscribe("atualizarStatusTanque/entrada")
+client.subscribe("buscarDevolutivas/entrada")
+client.subscribe("buscarTanquesDisponiveis/entrada")
+
+
+client.subscribe("pegandoTanque/entrada")
+client.subscribe("buscarTanquesSelecionados/entrada")
 
 print("🟢 Validador MQTT com sessão JWT rodando...")
 client.loop_forever()

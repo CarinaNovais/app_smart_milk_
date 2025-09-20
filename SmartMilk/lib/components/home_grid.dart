@@ -1,9 +1,10 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class HomeGrid extends StatelessWidget {
   final List<GridItem> items;
   final int columns;
-  final void Function(GridItem)? onItemTap; // callback opcional
+  final void Function(GridItem)? onItemTap;
 
   const HomeGrid({
     super.key,
@@ -14,67 +15,75 @@ class HomeGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return GridView.builder(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(16),
       itemCount: items.length,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: columns,
-        mainAxisSpacing: 10,
-        crossAxisSpacing: 10,
+        mainAxisSpacing: 16,
+        crossAxisSpacing: 16,
         childAspectRatio: 1,
       ),
       itemBuilder: (context, index) {
         final item = items[index];
-        final content = Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white, // fundo branco
-            borderRadius: BorderRadius.circular(10), // cantos arredondados
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black26,
-                blurRadius: 6,
-                offset: Offset(2, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: Image.asset(item.imagePath, fit: BoxFit.scaleDown),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                item.legenda,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+
+        final card = ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                color: (isDark ? Colors.white : Colors.white).withOpacity(
+                  isDark ? 0.08 : 0.14,
                 ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.white.withOpacity(0.10),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
               ),
-            ],
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Image.asset(item.imagePath, fit: BoxFit.contain),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    child: Text(
+                      item.legenda,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isDark
+                                ? Colors.white.withOpacity(0.85)
+                                : Colors.black.withOpacity(0.75),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
 
-        // final content = Column(
-        //   crossAxisAlignment: CrossAxisAlignment.stretch,
-        //   children: [
-        //     Expanded(child: Image.asset(item.imagePath, fit: BoxFit.scaleDown)),
-        //     const SizedBox(height: 4),
-        //     Text(
-        //       item.legenda,
-        //       textAlign: TextAlign.center,
-        //       style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        //     ),
-        //   ],
-        // );
-
-        if (onItemTap != null) {
-          return GestureDetector(onTap: () => onItemTap!(item), child: content);
-        }
-
-        return content;
+        return GestureDetector(
+          onTap: onItemTap != null ? () => onItemTap!(item) : null,
+          child: card,
+        );
       },
     );
   }
@@ -85,7 +94,7 @@ class GridItem {
   final String route;
   final String legenda;
 
-  GridItem({
+  const GridItem({
     required this.imagePath,
     required this.route,
     required this.legenda,

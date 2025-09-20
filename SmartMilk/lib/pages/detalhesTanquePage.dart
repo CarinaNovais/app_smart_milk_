@@ -1,13 +1,13 @@
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
+
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:typed_data/typed_buffers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
-
-const Color appBlue = Color(0xFF0097B2);
 
 class DetalhesTanquePage extends StatefulWidget {
   final String nome;
@@ -20,7 +20,8 @@ class DetalhesTanquePage extends StatefulWidget {
   final double carbono;
   final double metano;
 
-  DetalhesTanquePage({
+  const DetalhesTanquePage({
+    super.key,
     required this.nome,
     required this.idTanque,
     required this.idRegiao,
@@ -52,8 +53,9 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
       onVacaDeletada: () {},
+      onBuscarDevolutivas: (_) {},
+      onPegandoTanqueAceito: () {},
     );
-
     mqtt.inicializar();
   }
 
@@ -89,66 +91,253 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
 
     setState(() => _isLoading = false);
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Coleta enviada com sucesso!')));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Coleta enviada com sucesso!')),
+    );
+  }
+
+  /// Marca o tanque para análise (fora de parâmetros)
+  Future<void> executarColetaForaDosParametros({
+    int? idtanque,
+    String campo = 'status_tanque',
+    String valor = 'a_ser_analisado',
+  }) async {
+    try {
+      setState(() => _isLoading = true);
+
+      final dados = {
+        "idtanque": idtanque ?? widget.idTanque,
+        "campo": campo,
+        "valor": valor,
+      };
+
+      final mensagem = jsonEncode(dados);
+      final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
+
+      mqtt.client.publishMessage(
+        'atualizarStatusTanque/entrada',
+        MqttQos.atMostOnce,
+        buffer,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Solicitação enviada para análise.')),
+      );
+      Navigator.pushNamed(context, '/resultadoQrCode');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao descartar coleta: $e')));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: appBlue,
-      appBar: Navbar(
-        title: 'Qr Code Resultado - Dados do Tanque',
-        style: const TextStyle(color: Colors.white, fontSize: 20),
-        backPageRoute: '/homeColetor',
-        showEndDrawerButton: true,
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors:
+          isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)]
+              : const [Color(0xFFB2EBF2), Color(0xFF80DEEA), Color(0xFF64B5F6)],
+    );
+
+    return Container(
+      decoration: BoxDecoration(gradient: gradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+
+        appBar: Navbar(
+          title: 'QR Code • Dados do Tanque',
+          style: const TextStyle(fontSize: 20), // cor aplicada pela Navbar
+          backPageRoute: '/homeColetor',
+          showEndDrawerButton: true,
+        ),
+        endDrawer: MenuDrawer(mqtt: mqtt),
+
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  child: Container(
+                    width: double.infinity,
+                    constraints: const BoxConstraints(maxWidth: 720),
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 18),
+                    decoration: BoxDecoration(
+                      color: (isDark ? Colors.white : Colors.white).withOpacity(
+                        isDark ? 0.08 : 0.14,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.22),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.08),
+                          blurRadius: 24,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: _buildConteudo(isDark),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
-      endDrawer: MenuDrawer(mqtt: mqtt),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
+    );
+  }
+
+  Widget _buildConteudo(bool isDark) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Cabeçalho
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _buildItem('Nome', widget.nome),
-            _buildItem('ID do Tanque', widget.idTanque.toString()),
-            _buildItem('ID da Região', widget.idRegiao.toString()),
-            Divider(),
-            _buildItem('pH', widget.ph.toStringAsFixed(2)),
-            _buildItem('Temperatura (°C)', widget.temp.toStringAsFixed(2)),
-            _buildItem('Nível (L)', widget.nivel.toStringAsFixed(2)),
-            _buildItem('Amônia (mg/L)', widget.amonia.toStringAsFixed(2)),
-            _buildItem('Carbono (mg/L)', widget.carbono.toStringAsFixed(2)),
-            _buildItem('Metano (mg/L)', widget.metano.toStringAsFixed(2)),
-            SizedBox(height: 24),
-            ElevatedButton(
-              onPressed:
-                  _isLoading
-                      ? null
-                      : () async {
-                        setState(() {
-                          _isLoading = true;
-                        });
-
-                        await executarHistoricoColeta();
-
-                        setState(() {
-                          _isLoading = false;
-                        });
-
-                        Navigator.pushNamed(context, '/resultadoQrCode');
-                      },
-              child:
-                  _isLoading
-                      ? CircularProgressIndicator(color: Colors.white)
-                      : Text('Enviar Coleta'),
-              style: ElevatedButton.styleFrom(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                textStyle: TextStyle(fontSize: 18),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.22),
+                border: Border.all(color: Colors.white.withOpacity(0.25)),
+              ),
+              child: const Icon(
+                Icons.water_damage_outlined,
+                size: 22,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Tanque ${widget.idTanque} • Região ${widget.idRegiao}',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: 12),
+
+        // Card interno branco translúcido com os itens
+        Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.90),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+          child: Column(
+            children: [
+              _buildItem('Nome', widget.nome),
+              _buildDivider(),
+              _buildItem('pH', widget.ph.toStringAsFixed(2)),
+              _buildItem('Temperatura (°C)', widget.temp.toStringAsFixed(2)),
+              _buildItem('Nível (L)', widget.nivel.toStringAsFixed(2)),
+              _buildItem('Amônia (mg/L)', widget.amonia.toStringAsFixed(2)),
+              _buildItem('Carbono (mg/L)', widget.carbono.toStringAsFixed(2)),
+              _buildItem('Metano (mg/L)', widget.metano.toStringAsFixed(2)),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 16),
+
+        // Ações
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed:
+                    _isLoading
+                        ? null
+                        : () async {
+                          setState(() => _isLoading = true);
+                          await executarHistoricoColeta();
+                          if (!mounted) return;
+                          setState(() => _isLoading = false);
+                          Navigator.pushNamed(context, '/resultadoQrCode');
+                        },
+                icon:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.check_circle_outline),
+                label: const Text('Enviar Coleta'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF0097B2),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed:
+                    _isLoading
+                        ? null
+                        : () async {
+                          setState(() => _isLoading = true);
+                          await executarColetaForaDosParametros();
+                          if (!mounted) return;
+                          setState(() => _isLoading = false);
+                          Navigator.pushNamed(context, '/resultadoQrCode');
+                        },
+                icon: const Icon(Icons.report_gmailerrorred_outlined),
+                label: const Text('Descartar Coleta'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  backgroundColor: const Color(0xFFE53935),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -157,12 +346,36 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Row(
         children: [
-          Text(
-            '$label: ',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          SizedBox(
+            width: 170,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                color: Color(0xFF374151),
+              ),
+            ),
           ),
-          Expanded(child: Text(value, style: TextStyle(fontSize: 16))),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 15, color: Color(0xFF111827)),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Container(
+        height: 1,
+        width: double.infinity,
+        color: const Color(0xFFE5E7EB),
       ),
     );
   }

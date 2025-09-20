@@ -11,10 +11,18 @@ class MQTTService {
   factory MQTTService() => _instance;
 
   MQTTService._internal();
+
+  Function()? onPegandoTanqueAceito;
+  Function(String msg)? onPegandoTanqueNegado;
+
   Function(List<Map<String, dynamic>>)? onBuscarColetas;
   Function(List<Map<String, dynamic>>)? onBuscarVacas;
   Function(List<Map<String, dynamic>>)? onBuscarDepositosProdutor;
-
+  Function(List<Map<String, dynamic>>)? onBuscarDevolutivas;
+  Function(List<Map<String, dynamic>>)? onBuscarTanquesSelecionados;
+  Function(String idtanque, String campo, String valor)?
+  onStatusTanqueAtualizado;
+  Function(List<Map<String, dynamic>>)? onBuscarTanquesDisponiveis;
   late Function onLoginAceito;
   late Function(String) onLoginNegado;
   late Function onCadastroAceito;
@@ -46,12 +54,33 @@ class MQTTService {
     required Function onCadastroVacaAceito,
     required Function(String) onCadastroVacaNegado,
     required Function onVacaDeletada,
+    Function(List<Map<String, dynamic>>)? onBuscarDevolutivas,
+    Function(List<Map<String, dynamic>>)? onBuscarTanquesSelecionados,
+    Function(String idtanque, String campo, String valor)?
+    onStatusTanqueAtualizado,
+    Function(List<Map<String, dynamic>>)? onBuscarTanquesDisponiveis,
+
+    required void Function() onPegandoTanqueAceito,
+    void Function(String msg)? onPegandoTanqueNegado,
   }) {
     this.onLoginAceito = onLoginAceito;
     this.onLoginNegado = onLoginNegado;
     this.onCadastroAceito = onCadastroAceito;
     this.onCadastroNegado = onCadastroNegado;
 
+    this.onPegandoTanqueAceito = onPegandoTanqueAceito;
+    this.onPegandoTanqueNegado = onPegandoTanqueNegado;
+
+    this.onPegandoTanqueAceito = onPegandoTanqueAceito;
+    if (onPegandoTanqueNegado != null)
+      this.onPegandoTanqueNegado = onPegandoTanqueNegado;
+
+    if (onBuscarTanquesDisponiveis != null) {
+      this.onBuscarTanquesDisponiveis = onBuscarTanquesDisponiveis;
+    }
+    if (onStatusTanqueAtualizado != null) {
+      this.onStatusTanqueAtualizado = onStatusTanqueAtualizado;
+    }
     if (onDadosTanque != null) this.onDadosTanque = onDadosTanque;
     if (onFotoEditada != null) this.onFotoEditada = onFotoEditada;
     if (onErroFoto != null) this.onErroFoto = onErroFoto;
@@ -64,6 +93,12 @@ class MQTTService {
     if (onBuscarVacas != null) this.onBuscarVacas = onBuscarVacas;
     if (onBuscarDepositosProdutor != null) {
       this.onBuscarDepositosProdutor = onBuscarDepositosProdutor;
+    }
+    if (onBuscarDevolutivas != null) {
+      this.onBuscarDevolutivas = onBuscarDevolutivas;
+    }
+    if (onBuscarTanquesSelecionados != null) {
+      this.onBuscarTanquesSelecionados = onBuscarTanquesSelecionados;
     }
 
     this.onCadastroVacaAceito = onCadastroVacaAceito;
@@ -136,6 +171,17 @@ class MQTTService {
         client.subscribe('buscarVacas/resultado', MqttQos.atMostOnce);
         client.subscribe('editarVaca/resultado', MqttQos.atMostOnce);
         client.subscribe('deletarVaca/resultado', MqttQos.atMostOnce);
+        client.subscribe('buscarDevolutivas/resultado', MqttQos.atMostOnce);
+        client.subscribe('atualizarStatusTanque/resultado', MqttQos.atMostOnce);
+        client.subscribe(
+          'buscarTanquesDisponiveis/resultado',
+          MqttQos.atMostOnce,
+        );
+        client.subscribe('pegandoTanque/resultado', MqttQos.atMostOnce);
+        client.subscribe(
+          'buscarTanquesSelecionados/resultado',
+          MqttQos.atMostOnce,
+        );
 
         // ❗️cancela listener anterior e cria apenas UM
         await _updatesSub?.cancel();
@@ -190,6 +236,10 @@ class MQTTService {
                 await prefs.setString('idtanque', dados['idtanque'].toString());
                 await prefs.setString('idregiao', dados['idregiao'].toString());
               } else if (cargo == 2) {
+                await prefs.setString(
+                  'idregiao',
+                  (dados['idregiao'] ?? 'Sem Região').toString(),
+                );
                 await prefs.setString('placa', dados['placa'] ?? 'Sem Placa');
               }
             } else {
@@ -271,6 +321,7 @@ class MQTTService {
             }
           } else {
             print('❌ Erro: ${dados['mensagem']}');
+            onBuscarColetas?.call([]);
           }
         } else if (topic == 'buscarDepositosProdutor/resultado') {
           if (dados['status'] == 'ok') {
@@ -286,6 +337,7 @@ class MQTTService {
             print(
               '❌ Erro topico buscardepositosprodutor: ${dados['mensagem']}',
             );
+            onBuscarDepositosProdutor?.call([]);
           }
         } else if (topic == 'cadastroVaca/resultado') {
           if (dados['status'] == 'aceito') {
@@ -333,13 +385,140 @@ class MQTTService {
           } else {
             print('❌ Falha ao deletar vaca: ${dados['mensagem']}');
           }
+        } else if (topic == 'buscarDevolutivas/resultado') {
+          if (dados['status'] == 'ok') {
+            final devolutivas = dados['dados'];
+            if (devolutivas is List) {
+              final List<Map<String, dynamic>> listaDevolutivas =
+                  List<Map<String, dynamic>>.from(devolutivas);
+              onBuscarDevolutivas?.call(listaDevolutivas);
+            } else {
+              print('⚠️ "dados" não é uma lista.');
+            }
+          } else {
+            print(
+              '❌ Erro topico buscarDevolutivas/resultado: ${dados['mensagem']}',
+            );
+            onBuscarDevolutivas?.call([]);
+          }
+        } else if (topic == 'atualizarStatusTanque/resultado') {
+          if (dados['status'] == 'ok') {
+            onStatusTanqueAtualizado?.call(
+              dados['idtanque'],
+              dados['campo'],
+              dados['valor'],
+            );
+            print('✅ Status do tanque atualizado com sucesso');
+          } else {
+            print(
+              '❌ Falha ao atualizar status do tanque: ${dados['mensagem']}',
+            );
+          }
+        } else if (topic == 'buscarTanquesDisponiveis/resultado') {
+          if (dados['status'] == 'ok') {
+            final tanques = dados['dados'];
+            if (tanques is List) {
+              final List<Map<String, dynamic>> listaTanques =
+                  List<Map<String, dynamic>>.from(tanques);
+              onBuscarTanquesDisponiveis?.call(listaTanques);
+            } else {
+              print('⚠️ "dados" não é uma lista.');
+            }
+          } else {
+            print(
+              '❌ Erro topico buscarTanquesDisponiveis/resultado: ${dados['mensagem']}',
+            );
+            onBuscarTanquesDisponiveis?.call([]);
+          }
+        } else if (topic == 'pegandoTanque/resultado') {
+          final status = dados['status'];
+          if (status == 'ok') {
+            print('✅ Coleta selecionada com sucesso');
+            onPegandoTanqueAceito?.call();
+          } else {
+            final msg =
+                dados['mensagem']?.toString() ?? 'Falha ao selecionar o tanque';
+            print('❌ $msg');
+            onPegandoTanqueNegado?.call(msg);
+          }
+        } else if (topic == 'buscarTanquesSelecionados/resultado') {
+          if (dados['status'] == 'ok') {
+            final tanques = dados['dados'];
+            if (tanques is List) {
+              final List<Map<String, dynamic>> listaTanques =
+                  List<Map<String, dynamic>>.from(tanques);
+              onBuscarTanquesSelecionados?.call(listaTanques);
+            } else {
+              print('⚠️ "dados" não é uma lista.');
+            }
+          } else {
+            print(
+              '❌ Erro topico buscarTanquesSelecionados/resultado: ${dados['mensagem']}',
+            );
+            onBuscarTanquesSelecionados?.call([]);
+          }
+        } else {
+          print('⚠️ Payload inesperado: $payload');
         }
-      } else {
-        print('⚠️ Payload inesperado: $payload');
       }
     } catch (e) {
       print('❌ Erro ao processar mensagem: $e');
     }
+  }
+
+  Future<void> buscarTanquesSelecionados() async {
+    final prefs = await SharedPreferences.getInstance();
+    final coletor_id = prefs.getInt('id'); // id do coletor
+    if (coletor_id == null) {
+      print('ID do usuario nao encontrado nos SharedPreferences');
+      return;
+    }
+    final dados = {"coletor_id": coletor_id};
+
+    client.publishMessage(
+      'buscarTanquesSelecionados/entrada',
+      MqttQos.atLeastOnce,
+      MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+    );
+  }
+
+  Future<void> buscarTanquesDisponiveis({String? idregiao}) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    idregiao ??= prefs.getString('idregiao');
+    if (idregiao == null) {
+      print('ID da regiao do usuario nao encontrado nos SharedPreferences');
+      return;
+    }
+    final dados = {"idregiao": idregiao};
+
+    client.publishMessage(
+      'buscarTanquesDisponiveis/entrada',
+      MqttQos.atLeastOnce,
+      MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+    );
+  }
+
+  Future<void> buscarDevolutivas() async {
+    final prefs = await SharedPreferences.getInstance();
+    // final int? usuarioId = prefs.getInt('id');
+    /// ID do tanque do usuário obtido dos SharedPreferences.
+    final idtanque = prefs.getString('idtanque');
+
+    if (idtanque == null) {
+      print('ID do tanque do usuário não encontrado nos SharedPreferences');
+      return;
+    }
+
+    /// Dados a serem enviados ao broker.
+    final dados = {"idtanque": idtanque};
+
+    /// Publica a mensagem no tópico `buscarDevolutivas/entrada`.
+    client.publishMessage(
+      'buscarDevolutivas/entrada',
+      MqttQos.atLeastOnce,
+      MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
+    );
   }
 
   Future<void> buscarVacas() async {

@@ -1,18 +1,20 @@
-import 'package:flutter/material.dart';
-import 'package:app_smart_milk/pages/mqtt_service.dart';
-import 'package:app_smart_milk/components/navbar.dart';
-import 'package:app_smart_milk/components/menuDrawer.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:typed_data/typed_buffers.dart';
 import 'package:mqtt_client/mqtt_client.dart';
 
+import 'package:app_smart_milk/pages/mqtt_service.dart';
+import 'package:app_smart_milk/components/navbar.dart';
+import 'package:app_smart_milk/components/menuDrawer.dart';
+
+import 'dart:ui';
+
 const Color appBlue = Color(0xFF0097B2);
 
-/// ================= Editar Vaca Page =================
+/// ================= Editar Vaca =================
 class EditarVacaPage extends StatefulWidget {
   final Map<String, dynamic> vaca;
-
   const EditarVacaPage({Key? key, required this.vaca}) : super(key: key);
 
   @override
@@ -48,7 +50,6 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
       onCampoVacaAtualizado: (campo, valor) {
-        // Atualiza o controller correspondente
         setState(() {
           switch (campo) {
             case 'nome':
@@ -73,21 +74,16 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
         );
       },
       onVacaDeletada: () {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Vaca excluída com sucesso!')),
-          );
-          // Navigator.pushReplacement(
-          //   context,
-          //   MaterialPageRoute(builder: (context) => const ListaVacasPage()),
-          // );
-        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Vaca excluída com sucesso!')),
+        );
       },
+      onPegandoTanqueAceito: () {},
     );
-
     mqtt.inicializar();
 
-    // Inicializa os controllers com os dados da vaca
+    // carrega valores iniciais nos controllers
     nomeController.text = widget.vaca['nome'] ?? '';
     brincoController.text = widget.vaca['brinco']?.toString() ?? '';
     criasController.text = widget.vaca['crias']?.toString() ?? '';
@@ -98,7 +94,6 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
   void atualizarVacaCampo(String campo, String valor) async {
     final prefs = await SharedPreferences.getInstance();
     final usuario_id = prefs.getInt('id');
-
     if (usuario_id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("⚠️ Dados do usuário ausentes")),
@@ -107,7 +102,6 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     }
 
     final vacaId = widget.vaca['vaca_id'];
-
     if (vacaId == null) {
       ScaffoldMessenger.of(
         context,
@@ -115,7 +109,7 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
       return;
     }
 
-    final Map<String, dynamic> dados = {
+    final dados = {
       "usuario_id": usuario_id,
       "vaca_id": vacaId,
       "campo": campo,
@@ -124,7 +118,6 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
 
     final mensagem = jsonEncode(dados);
     final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
-
     mqtt.client.publishMessage(
       'editarVaca/entrada',
       MqttQos.atMostOnce,
@@ -137,7 +130,6 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
   Future<void> deletarVaca() async {
     final prefs = await SharedPreferences.getInstance();
     final usuario_id = prefs.getInt('id');
-
     if (usuario_id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("⚠️ Dados do usuário ausentes")),
@@ -146,7 +138,6 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     }
 
     final vacaId = widget.vaca['vaca_id'];
-
     if (vacaId == null) {
       ScaffoldMessenger.of(
         context,
@@ -154,14 +145,9 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
       return;
     }
 
-    final Map<String, dynamic> dados = {
-      "usuario_id": usuario_id,
-      "vaca_id": widget.vaca['vaca_id'],
-    };
-
+    final dados = {"usuario_id": usuario_id, "vaca_id": vacaId};
     final mensagem = jsonEncode(dados);
     final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
-
     mqtt.client.publishMessage(
       'deletarVaca/entrada',
       MqttQos.atMostOnce,
@@ -179,16 +165,12 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     required VoidCallback? onNotifierUpdate,
   }) async {
     atualizarVacaCampo(campo, valor);
-
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(campo, valor);
-
-    if (onNotifierUpdate != null) {
-      onNotifierUpdate();
-    }
+    onNotifierUpdate?.call();
   }
 
-  Widget buildEditableField({
+  Widget _editableField({
     required TextEditingController controller,
     required String label,
     required bool editando,
@@ -196,165 +178,214 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     TextInputType keyboardType = TextInputType.text,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: controller,
-              enabled: editando,
-              keyboardType: keyboardType,
-              decoration: InputDecoration(
-                labelText: label,
-                filled: true,
-                fillColor: Colors.white,
+      padding: const EdgeInsets.only(bottom: 12),
+      child: _GlassSection(
+        child: Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: controller,
+                enabled: editando,
+                keyboardType: keyboardType,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: label,
+                  labelStyle: const TextStyle(color: Color(0xFFF5F5F5)),
+                  enabledBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFF5F5F5)),
+                  ),
+                  focusedBorder: const UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFFF5F5F5)),
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          ElevatedButton(
-            onPressed: onPressed,
-            child: Text(editando ? 'Salvar' : 'Editar'),
-          ),
-        ],
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: onPressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: appBlue,
+              ),
+              child: Text(editando ? 'Salvar' : 'Editar'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: Navbar(
-        title: 'Editar Vaca: ${widget.vaca['nome']}',
-        style: const TextStyle(color: Colors.white, fontSize: 20),
-        backPageRoute: '/listagemVacas',
-      ),
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors:
+          isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)]
+              : const [Color(0xFFB2EBF2), Color(0xFF80DEEA), Color(0xFF64B5F6)],
+    );
 
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ListView(
-          children: [
-            buildEditableField(
-              controller: nomeController,
-              label: 'Nome',
-              editando: editandoNome,
-              onPressed: () {
-                setState(() {
-                  if (editandoNome)
-                    salvarVacaCampo(
-                      campo: 'nome',
-                      valor: nomeController.text,
-                      onNotifierUpdate: null,
-                    );
-                  editandoNome = !editandoNome;
-                });
-              },
-            ),
-            buildEditableField(
-              controller: brincoController,
-              label: 'Brinco',
-              editando: editandoBrinco,
-              onPressed: () {
-                setState(() {
-                  if (editandoBrinco)
-                    salvarVacaCampo(
-                      campo: 'brinco',
-                      valor: brincoController.text,
-                      onNotifierUpdate: null,
-                    );
-                  editandoBrinco = !editandoBrinco;
-                });
-              },
-            ),
-            buildEditableField(
-              controller: criasController,
-              label: 'Crias',
-              editando: editandoCrias,
-              onPressed: () {
-                setState(() {
-                  if (editandoCrias)
-                    salvarVacaCampo(
-                      campo: 'crias',
-                      valor: criasController.text,
-                      onNotifierUpdate: null,
-                    );
-                  editandoCrias = !editandoCrias;
-                });
-              },
-            ),
-            buildEditableField(
-              controller: origemController,
-              label: 'Origem',
-              editando: editandoOrigem,
-              onPressed: () {
-                setState(() {
-                  if (editandoOrigem)
-                    salvarVacaCampo(
-                      campo: 'origem',
-                      valor: origemController.text,
-                      onNotifierUpdate: null,
-                    );
-                  editandoOrigem = !editandoOrigem;
-                });
-              },
-            ),
-            buildEditableField(
-              controller: estadoController,
-              label: 'Estado',
-              editando: editandoEstado,
-              onPressed: () {
-                setState(() {
-                  if (editandoEstado)
-                    salvarVacaCampo(
-                      campo: 'estado',
-                      valor: estadoController.text,
-                      onNotifierUpdate: null,
-                    );
-                  editandoEstado = !editandoEstado;
-                });
-              },
-            ), // Botão de excluir separado, fora dos campos
-            const SizedBox(height: 20),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () {
-                showDialog(
-                  context: context,
-                  builder:
-                      (context) => AlertDialog(
-                        title: const Text("Confirmar exclusão"),
-                        content: const Text(
-                          "Deseja realmente excluir esta vaca?",
+    return Container(
+      decoration: BoxDecoration(gradient: gradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        appBar: Navbar(
+          title: 'Editar Vaca: ${widget.vaca['nome']}',
+          style: const TextStyle(fontSize: 20),
+          backPageRoute: '/listagemVacas',
+          showEndDrawerButton: false,
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _editableField(
+                controller: nomeController,
+                label: 'Nome',
+                editando: editandoNome,
+                onPressed: () {
+                  setState(() {
+                    if (editandoNome) {
+                      salvarVacaCampo(
+                        campo: 'nome',
+                        valor: nomeController.text,
+                        onNotifierUpdate: null,
+                      );
+                    }
+                    editandoNome = !editandoNome;
+                  });
+                },
+              ),
+              _editableField(
+                controller: brincoController,
+                label: 'Brinco',
+                editando: editandoBrinco,
+                onPressed: () {
+                  setState(() {
+                    if (editandoBrinco) {
+                      salvarVacaCampo(
+                        campo: 'brinco',
+                        valor: brincoController.text,
+                        onNotifierUpdate: null,
+                      );
+                    }
+                    editandoBrinco = !editandoBrinco;
+                  });
+                },
+              ),
+              _editableField(
+                controller: criasController,
+                label: 'Crias',
+                editando: editandoCrias,
+                onPressed: () {
+                  setState(() {
+                    if (editandoCrias) {
+                      salvarVacaCampo(
+                        campo: 'crias',
+                        valor: criasController.text,
+                        onNotifierUpdate: null,
+                      );
+                    }
+                    editandoCrias = !editandoCrias;
+                  });
+                },
+              ),
+              _editableField(
+                controller: origemController,
+                label: 'Origem',
+                editando: editandoOrigem,
+                onPressed: () {
+                  setState(() {
+                    if (editandoOrigem) {
+                      salvarVacaCampo(
+                        campo: 'origem',
+                        valor: origemController.text,
+                        onNotifierUpdate: null,
+                      );
+                    }
+                    editandoOrigem = !editandoOrigem;
+                  });
+                },
+              ),
+              _editableField(
+                controller: estadoController,
+                label: 'Estado',
+                editando: editandoEstado,
+                onPressed: () {
+                  setState(() {
+                    if (editandoEstado) {
+                      salvarVacaCampo(
+                        campo: 'estado',
+                        valor: estadoController.text,
+                        onNotifierUpdate: null,
+                      );
+                    }
+                    editandoEstado = !editandoEstado;
+                  });
+                },
+              ),
+              const SizedBox(height: 12),
+              _GlassSection(
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.delete_forever_rounded,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text("Cancelar"),
-                          ),
-                          TextButton(
-                            onPressed: () async {
-                              Navigator.pop(context); // Fecha o diálogo
-                              await deletarVaca(); // Apenas envia a mensagem MQTT
-                              if (mounted) {
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/listagemVacas',
-                                );
-                              }
-                            },
-                            child: const Text(
-                              "Excluir",
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                        ],
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder:
+                                (context) => AlertDialog(
+                                  title: const Text("Confirmar exclusão"),
+                                  content: const Text(
+                                    "Deseja realmente excluir esta vaca?",
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: const Text("Cancelar"),
+                                    ),
+                                    TextButton(
+                                      onPressed: () async {
+                                        Navigator.pop(context);
+                                        await deletarVaca();
+                                        if (mounted) {
+                                          Navigator.pushReplacementNamed(
+                                            context,
+                                            '/listagemVacas',
+                                          );
+                                        }
+                                      },
+                                      child: const Text(
+                                        "Excluir",
+                                        style: TextStyle(color: Colors.red),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                          );
+                        },
+                        child: const Text("Excluir Vaca"),
                       ),
-                );
-              },
-              child: const Text("Excluir Vaca"),
-            ),
-          ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -371,7 +402,7 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
   }
 }
 
-/// ================= Lista Vacas Page =================
+/// ================= Lista Vacas =================
 class ListaVacasPage extends StatefulWidget {
   const ListaVacasPage({Key? key}) : super(key: key);
 
@@ -381,17 +412,14 @@ class ListaVacasPage extends StatefulWidget {
 
 class _ListaVacasPageState extends State<ListaVacasPage> {
   List<Map<String, dynamic>> _vacas = [];
-  String nomeProdutor = '';
   bool _carregando = true;
   bool _flashTratado = false;
-
   late MQTTService mqtt;
 
   @override
   void initState() {
     super.initState();
     mqtt = MQTTService();
-
     mqtt.configurarCallbacks(
       onLoginAceito: () {},
       onLoginNegado: (_) {},
@@ -408,45 +436,35 @@ class _ListaVacasPageState extends State<ListaVacasPage> {
           _carregando = false;
         });
       },
-
       onVacaDeletada: () {
         if (!mounted) return;
         setState(() => _carregando = true);
         mqtt.buscarVacas();
       },
+      onBuscarDevolutivas: (_) {},
+      onPegandoTanqueAceito: () {},
     );
-    mqtt.inicializar().then((_) {
-      _carregarComTimeout();
-    });
+    mqtt.inicializar().then((_) => _carregarComTimeout());
   }
 
   Future<void> _carregarComTimeout() async {
     setState(() => _carregando = true);
     mqtt.buscarVacas();
-
-    // ✅ encerra loading se nada vier
     await Future.delayed(const Duration(seconds: 8));
-    if (mounted && _carregando) {
-      setState(() => _carregando = false);
-    }
+    if (mounted && _carregando) setState(() => _carregando = false);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-
-    // Declare só uma vez
     final Map<String, dynamic>? args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
     if (args != null) {
-      // 1) Recarrega lista se veio com refresh
       if (args['refresh'] == true) {
         setState(() => _carregando = true);
         mqtt.buscarVacas();
       }
-
-      // 2) Mostra flash UMA VEZ e limpa
       final flash = args['flash'];
       if (!_flashTratado && flash is String && flash.isNotEmpty) {
         _flashTratado = true;
@@ -455,7 +473,6 @@ class _ListaVacasPageState extends State<ListaVacasPage> {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(flash)));
-          // Navigator.pushReplacementNamed(context, '/listagemVacas');
         });
       }
     }
@@ -463,49 +480,83 @@ class _ListaVacasPageState extends State<ListaVacasPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: appBlue,
-      appBar: Navbar(
-        title: 'Listagem das Vacas',
-        style: const TextStyle(color: Colors.white, fontSize: 20),
-        backPageRoute: '/monitoramentoVacas',
-        showEndDrawerButton: true,
-      ),
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors:
+          isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)]
+              : const [Color(0xFFB2EBF2), Color(0xFF80DEEA), Color(0xFF64B5F6)],
+    );
 
-      endDrawer: MenuDrawer(mqtt: mqtt),
-      body:
-          _carregando
-              ? const Center(child: CircularProgressIndicator())
-              : _vacas.isEmpty
-              ? const Center(child: Text('Nenhuma vaca encontrada.'))
-              : ListView.builder(
-                itemCount: _vacas.length,
-                itemBuilder: (context, index) {
-                  final vaca = _vacas[index];
-                  return Card(
-                    margin: const EdgeInsets.symmetric(
-                      vertical: 6,
-                      horizontal: 10,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12.0),
+    return Container(
+      decoration: BoxDecoration(gradient: gradient),
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+        appBar: Navbar(
+          title: 'Listagem das Vacas',
+          style: const TextStyle(fontSize: 20),
+          backPageRoute: '/monitoramentoVacas',
+          showEndDrawerButton: true,
+        ),
+        endDrawer: MenuDrawer(mqtt: mqtt),
+
+        body:
+            _carregando
+                ? const Center(child: CircularProgressIndicator())
+                : _vacas.isEmpty
+                ? const Center(
+                  child: Text(
+                    'Nenhuma vaca encontrada.',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                )
+                : ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  itemCount: _vacas.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) {
+                    final vaca = _vacas[index];
+                    return _GlassSection(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            '🧾 Vaca #${index + 1}',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.pets_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Vaca #${index + 1}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 6),
-                          Text('Nome: ${vaca['nome']}'),
-                          Text('Brinco: ${vaca['brinco']}'),
-                          Text('Crias: ${vaca['crias']}'),
-                          Text('Origem: ${vaca['origem']}'),
-                          Text('Estado: ${vaca['estado']}'),
                           const SizedBox(height: 10),
+                          _kv('Nome', '${vaca['nome']}'),
+                          _kv('Brinco', '${vaca['brinco']}'),
+                          _kv('Crias', '${vaca['crias']}'),
+                          _kv('Origem', '${vaca['origem']}'),
+                          _kv('Estado', '${vaca['estado']}'),
+                          const SizedBox(height: 12),
                           Align(
                             alignment: Alignment.centerRight,
-                            child: ElevatedButton(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.edit_rounded, size: 18),
+                              label: const Text('Editar'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: appBlue,
+                              ),
                               onPressed: () async {
                                 final atualizado = await Navigator.push(
                                   context,
@@ -514,29 +565,77 @@ class _ListaVacasPageState extends State<ListaVacasPage> {
                                         (context) => EditarVacaPage(vaca: vaca),
                                   ),
                                 );
-
                                 if (atualizado == true) {
-                                  setState(() {
-                                    _carregando = true;
-                                  });
+                                  setState(() => _carregando = true);
                                   mqtt.buscarVacas();
                                 }
                               },
-                              child: const Text('Editar'),
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
+      ),
     );
   }
 
-  // @override
-  // void dispose() {
-  //   mqtt.client.disconnect();
-  //   super.dispose();
-  // }
+  Widget _kv(String k, String v) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(
+      children: [
+        Expanded(
+          flex: 3,
+          child: Text(
+            '$k:',
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 7,
+          child: Text(v, style: const TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
+
+/// ======= Glass section reutilizável =======
+class _GlassSection extends StatelessWidget {
+  final Widget child;
+  const _GlassSection({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.white).withOpacity(
+              isDark ? 0.08 : 0.14,
+            ),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.white.withOpacity(0.22), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
 }

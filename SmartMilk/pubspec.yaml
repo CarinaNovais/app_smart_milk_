@@ -1,6 +1,6 @@
 name: app_smart_milk
 description: "A new Flutter project."
-publish_to: 'none' # Remova esta linha se quiser publicar no pub.dev
+publish_to: "none" # Remova esta linha se quiser publicar no pub.dev
 
 version: 1.0.0+1
 
@@ -19,12 +19,17 @@ dependencies:
   image_picker: ^1.1.2
   intl: ^0.18.1
   path_provider: ^2.0.14
- 
 
 dev_dependencies:
+  flutter_launcher_icons: ^0.13.1
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "lib/images/VACALOGO.png"
 
 flutter:
   uses-material-design: true

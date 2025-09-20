@@ -12,6 +12,7 @@ import 'dart:typed_data';
 import 'package:mqtt_client/mqtt_client.dart';
 import 'package:typed_data/typed_buffers.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'dart:ui';
 
 const Color appBlue = Color(0xFF0097B2);
 late MQTTService mqtt;
@@ -34,6 +35,7 @@ class _PerfilPage extends State<PerfilPage> {
   File? imagemPerfil;
   Uint8List? imagemMemoria;
   String? binarioImagem;
+  late final MQTTService mqtt;
 
   @override
   void initState() {
@@ -76,6 +78,8 @@ class _PerfilPage extends State<PerfilPage> {
       onCadastroVacaAceito: () {},
       onCadastroVacaNegado: (_) {},
       onVacaDeletada: () {},
+      onBuscarDevolutivas: (_) {},
+      onPegandoTanqueAceito: () {},
     );
     mqtt.inicializar();
 
@@ -253,32 +257,83 @@ class _PerfilPage extends State<PerfilPage> {
   }
 
   Widget _perfilComum() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Column(
       children: [
-        CircleAvatar(
-          radius: 50,
-          backgroundColor: Colors.white,
-          backgroundImage:
-              imagemPerfil != null
-                  ? FileImage(imagemPerfil!)
-                  : (imagemMemoria != null
-                      ? MemoryImage(imagemMemoria!)
-                      : null),
-          child:
-              (imagemPerfil == null && imagemMemoria == null)
-                  ? const Icon(Icons.person, size: 50, color: appBlue)
-                  : null,
+        // Avatar grande com borda translúcida
+        Container(
+          width: 110,
+          height: 110,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.35), width: 3),
+          ),
+          child: ClipOval(
+            child:
+                imagemPerfil != null
+                    ? Image.file(imagemPerfil!, fit: BoxFit.cover)
+                    : (imagemMemoria != null
+                        ? Image.memory(imagemMemoria!, fit: BoxFit.cover)
+                        : Container(
+                          color: Colors.white,
+                          child: const Icon(
+                            Icons.person,
+                            size: 60,
+                            color: appBlue,
+                          ),
+                        )),
+          ),
         ),
+
         const SizedBox(height: 12),
-        // ElevatedButton.icon(
-        //   onPressed: selecionarEenviarImagem,
-        //   icon: const Icon(Icons.photo_camera),
-        //   label: const Text('Mudar foto de perfil'),
-        //   style: ElevatedButton.styleFrom(
-        //     backgroundColor: Colors.white,
-        //     foregroundColor: appBlue,
-        //     shape: RoundedRectangleBorder(
-        //       borderRadius: BorderRadius.circular(8),
+
+        // Nome (off-white)
+        Text(
+          nomeUsuario.isEmpty ? 'Usuário' : nomeUsuario,
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.white,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // // Botão de mudar foto (estilizado, chama sua função existente)
+        // GestureDetector(
+        //   onTap: selecionarEenviarImagem,
+        //   child: Container(
+        //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        //     decoration: BoxDecoration(
+        //       color: (isDark ? Colors.white : Colors.white).withOpacity(
+        //         isDark ? 0.10 : 0.16,
+        //       ),
+        //       borderRadius: BorderRadius.circular(24),
+        //       border: Border.all(
+        //         color: Colors.white.withOpacity(0.22),
+        //         width: 1,
+        //       ),
+        //     ),
+        //     child: Row(
+        //       mainAxisSize: MainAxisSize.min,
+        //       children: [
+        //         const Icon(
+        //           Icons.photo_camera_outlined,
+        //           size: 18,
+        //           color: Colors.white,
+        //         ),
+        //         const SizedBox(width: 8),
+        //         const Text(
+        //           'Mudar foto de perfil',
+        //           style: TextStyle(
+        //             color: Colors.white,
+        //             fontWeight: FontWeight.w600,
+        //             fontSize: 14,
+        //           ),
+        //         ),
+        //       ],
         //     ),
         //   ),
         // ),
@@ -311,34 +366,100 @@ class _PerfilPage extends State<PerfilPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: appBlue,
-      appBar: Navbar(
-        title: 'Perfil',
-        style: const TextStyle(color: Colors.white, fontSize: 20),
-        backPageRoutePorCargo: {
-          0: '/homeProdutor', // se cargo == 0
-          2: '/homeColetor', // se cargo == 2
-        },
-        backPageRoute: '/homeDefault', // fallback caso cargo não esteja no mapa
-        showEndDrawerButton: true,
-      ),
+    final isDark = MediaQuery.of(context).platformBrightness == Brightness.dark;
 
-      endDrawer: MenuDrawer(mqtt: mqtt),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _perfilComum(),
-            const SizedBox(height: 24),
-            if (cargo == 0) _perfilProdutor(),
-            if (cargo == 2) _perfilColetor(),
-            if (cargo != 0 && cargo != 2)
-              const Text(
-                "⚠️ Cargo não reconhecido.",
-                style: TextStyle(color: Colors.white),
+    final gradient = LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors:
+          isDark
+              ? const [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)]
+              : const [Color(0xFFB2EBF2), Color(0xFF80DEEA), Color(0xFF64B5F6)],
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: gradient,
+      ), // gradiente FORA do Scaffold
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        extendBody: true,
+
+        appBar: Navbar(
+          title: 'Perfil',
+          style: const TextStyle(fontSize: 20), // cor é aplicada na Navbar
+          backPageRoutePorCargo: {0: '/homeProdutor', 2: '/homeColetor'},
+          backPageRoute: '/homeDefault',
+          showEndDrawerButton: true,
+        ),
+
+        endDrawer: MenuDrawer(mqtt: mqtt),
+
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              children: [
+                // card de perfil (glass)
+                _GlassCard(
+                  child: Column(
+                    children: [
+                      _perfilComum(), // avatar + botão "mudar foto"
+                      const SizedBox(height: 16),
+                      Divider(color: Colors.white.withOpacity(0.24), height: 1),
+                      const SizedBox(height: 16),
+
+                      // blocos de info por cargo
+                      if (cargo == 0) _perfilProdutor(),
+                      if (cargo == 2) _perfilColetor(),
+                      if (cargo != 0 && cargo != 2)
+                        const Text(
+                          "⚠️ Cargo não reconhecido.",
+                          style: TextStyle(color: Colors.white),
+                        ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCard extends StatelessWidget {
+  final Widget child;
+  const _GlassCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.white).withOpacity(
+              isDark ? 0.09 : 0.14,
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.22), width: 1),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 24,
+                offset: const Offset(0, 12),
               ),
-          ],
+            ],
+          ),
+          child: child,
         ),
       ),
     );

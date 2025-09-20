@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String servidorIP = '192.168.66.15'; // ipmeunotebook
+const String servidorIP = '192.168.66.11'; // ipmeunotebook
 const String servidorPorta = '5000';
 
 String get baseURL => 'http://$servidorIP:$servidorPorta';
@@ -57,6 +57,112 @@ class CadastroHistoricoColetaResultado {
     required this.sucesso,
     required this.mensagem,
   });
+}
+
+class AtualizacaoStatusTanqueRuim {
+  final bool sucesso;
+  final String mensagem;
+  AtualizacaoStatusTanqueRuim({required this.sucesso, required this.mensagem});
+}
+
+class pegandoTanqueCadResultado {
+  final bool sucesso;
+  final String mensagem;
+
+  pegandoTanqueCadResultado({required this.sucesso, required this.mensagem});
+}
+
+Future<pegandoTanqueCadResultado> pegandoTanqueCad({
+  required int idregiao,
+  required int idtanque,
+  required int produtor_id,
+  required String nome,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final coletor_id = prefs.getInt('id');
+
+  if (coletor_id == null) {
+    return pegandoTanqueCadResultado(
+      sucesso: false,
+      mensagem:
+          "Não foi possível identificar o coletor (id). Faça login novamente.",
+    );
+  }
+
+  final uri = Uri.parse('${baseURL}/pegandoTanque');
+  final body = jsonEncode({
+    "idregiao": idregiao,
+    "idtanque": idtanque,
+    "produtor_id": produtor_id,
+    "nome": nome,
+    "coletor_id": coletor_id,
+  });
+
+  try {
+    final resposta = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+
+    final dados = jsonDecode(resposta.body);
+    if (resposta.statusCode == 200) {
+      return pegandoTanqueCadResultado(
+        sucesso: true,
+        mensagem: dados["status"] ?? "Coleta selecionada com sucesso!",
+      );
+    } else {
+      return pegandoTanqueCadResultado(
+        sucesso: false,
+        mensagem: dados["erro"] ?? "Erro ao selecionar coleta.",
+      );
+    }
+  } catch (e) {
+    return pegandoTanqueCadResultado(
+      sucesso: false,
+      mensagem: "Erro ao conectar ao servidor.",
+    );
+  }
+}
+
+Future<AtualizacaoStatusTanqueRuim> enviarStatusTanqueAtualilzacao({
+  required int id_tanque,
+  required String campo,
+  required String valor,
+}) async {
+  final uri = Uri.parse('${baseURL}/atualizarStatusTanque');
+
+  final body = jsonEncode({
+    "id_tanque": id_tanque,
+    "campo": campo,
+    "valor": valor,
+  });
+
+  try {
+    final resposta = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: body,
+    );
+    final dados = jsonDecode(resposta.body);
+
+    if (resposta.statusCode == 200) {
+      return AtualizacaoStatusTanqueRuim(
+        sucesso: true,
+        mensagem: dados["mensagem"] ?? "Campo atualizado com sucesso!",
+      );
+    } else {
+      return AtualizacaoStatusTanqueRuim(
+        sucesso: false,
+        mensagem: dados["erro"] ?? "Erro ao atualizar campo.",
+      );
+    }
+  } catch (e) {
+    return AtualizacaoStatusTanqueRuim(
+      sucesso: false,
+      mensagem: "Erro ao conectar ao servidor.",
+    );
+  }
 }
 
 Future<AtualizacaoVacaResultado> enviarVacaAtualizacao({
@@ -302,7 +408,6 @@ Future<CadastroHistoricoColetaResultado> enviarHistoricoColeta({
   }
 }
 
-////////////////////////////////////////////fazer future cadastrovacasresultado
 Future<CadastroVacaResultado> enviarCadastroVaca({
   required int usuario_id,
   required String nome,
