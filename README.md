@@ -17,7 +17,7 @@ O SMARTMILK foi criado para facilitar o acompanhamento da produção e coleta de
 - 🔒 Acesso individualizado para produtor e coletor
 - 📅 Histórico de coletas e registros por tanque
 - 🌐 Integração com sistema IoT para dados em tempo real
-- 🔔 Alertas sobre anomalias nos parâmetros do leite
+- 🔔 Comunicação do contratante e produtor
 - 📍 Localização dos tanques vinculados ao usuário
 
 ## 🚀 Tecnologias Utilizadas
