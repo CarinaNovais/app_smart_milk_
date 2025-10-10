@@ -2,7 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-const String servidorIP = '192.168.66.11'; // ipmeunotebook
+// arrumar ip
+// const String servidorIP = '192.168.244.112'; // ipmeunotebook
+// const String servidorIP = '192.168.66.22'; // ipmeunotebook
+const String servidorIP = '192.168.12.100';
 const String servidorPorta = '5000';
 
 String get baseURL => 'http://$servidorIP:$servidorPorta';
@@ -277,6 +280,14 @@ Future<LoginResultado> enviarLogin({
       headers: {'Content-Type': 'application/json'},
       body: body,
     );
+
+    // Adicione este bloco para tratar resposta vazia
+    if (resposta.body.isEmpty) {
+      return LoginResultado(
+        sucesso: false,
+        mensagem: "Resposta vazia do servidor.",
+      );
+    }
 
     final dados = jsonDecode(resposta.body);
 

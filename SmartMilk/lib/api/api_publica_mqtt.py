@@ -12,18 +12,38 @@ CORS(app)
 
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5000")
 
+#notebook
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.66.13", #ip computador joao
+        host="192.168.12.102", #ip computador joao
         user="root",
         password="root",
         database="mimosa"
     )
 
-MQTT_BROKER = "192.168.66.50"
+MQTT_BROKER = "192.168.12.103"
 MQTT_PORT = 1883
-MQTT_USERNAME = "csilab"
-MQTT_PASSWORD = "WhoAmI#2023"
+MQTT_USERNAME = "admin"
+MQTT_PASSWORD = "admin"
+
+# MQTT_BROKER = "192.168.66.50"
+# MQTT_PORT = 1883
+# MQTT_USERNAME = "csilab"
+# MQTT_PASSWORD = "WhoAmI#2023"
+
+#celular ##arrumar ip
+# def conectar_banco():
+#     return mysql.connector.connect(
+#         host="192.168.244.36", #ip computador joao
+#         user="root",
+#         password="root",
+#         database="mimosa"
+#     )
+
+# MQTT_BROKER = "192.168.244.220"
+# MQTT_PORT = 1883
+# MQTT_USERNAME = "admin"
+# MQTT_PASSWORD = "admin"
 
 # Limite máximo para o corpo da requisição (20MB)
 app.config['MAX_CONTENT_LENGTH'] = 20 * 1024 * 1024  # 20 megabytes

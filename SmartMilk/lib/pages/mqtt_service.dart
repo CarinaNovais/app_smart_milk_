@@ -124,8 +124,13 @@ class MQTTService {
     if (_isConnecting) return;
     _isConnecting = true;
 
+    // client = MqttServerClient(
+    //   '192.168.244.220', //arrumar ip broker joao
+    //   'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
+    // );
+
     client = MqttServerClient(
-      '192.168.66.50',
+      '192.168.12.103', //arrumar ip broker joao
       'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
     );
 
@@ -145,7 +150,9 @@ class MQTTService {
     };
 
     try {
-      final connectionStatus = await client.connect('csilab', 'WhoAmI#2023');
+      //arrumar
+      final connectionStatus = await client.connect('admin', 'admin');
+      // final connectionStatus = await client.connect('csilab', 'WhoAmI#2023');
 
       if (connectionStatus != null &&
           connectionStatus.state == MqttConnectionState.connected) {

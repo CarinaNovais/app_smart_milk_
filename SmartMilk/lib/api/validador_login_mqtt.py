@@ -13,14 +13,25 @@ JWT_SECRET = 'mimosa' #chave_secreta_aqui
 JWT_ALGORITHM = 'HS256' #algoritmo de criptografia
 JWT_EXPIRACAO_MINUTOS = 30 #tempo de expiração do token
 
+
 # Função para conectar no banco de dados
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.66.13", #ip computador joao
+        host="192.168.12.102", #ip computador joao
         user="root",
         password="root",
         database="mimosa"
     )
+
+#celular ##arrumar ip
+# def conectar_banco():
+#     return mysql.connector.connect(
+#         host="192.168.244.36", #ip computador joao
+#         user="root",
+#         password="root",
+#         database="mimosa"
+#     )
+
 
 
 #função gerar token JWT
@@ -1128,10 +1139,16 @@ def on_message(client, userdata, msg):
 # Configurando MQTT
 # Isso conecta no broker MQTT e fica escutando o tempo todo
 client = mqtt.Client()
-client.username_pw_set("csilab", "WhoAmI#2023")
+#arrumar
+# client.username_pw_set("csilab", "WhoAmI#2023")
+client.username_pw_set("admin", "admin")
 client.on_message = on_message
 
-client.connect("192.168.66.50", 1883)
+#arrumar
+# client.connect("192.168.244.220", 1883)
+
+#ip broker
+client.connect("192.168.12.103", 1883)
 
 client.subscribe("login/entrada")
 client.subscribe("cadastro/entrada")

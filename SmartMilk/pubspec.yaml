@@ -30,6 +30,7 @@ flutter_icons:
   android: true
   ios: true
   image_path: "lib/images/VACALOGO.png"
+  adaptive_icon_background: "#FFFFFF"
 
 flutter:
   uses-material-design: true

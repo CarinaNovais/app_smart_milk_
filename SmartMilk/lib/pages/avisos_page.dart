@@ -7,7 +7,11 @@ import 'package:app_smart_milk/components/navbar.dart';
 import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 
-const String servidorIP = '192.168.66.11';
+// arrumar ip
+// const String servidorIP = '192.168.244.112'; //ip meu notebook
+
+const String servidorIP = '192.168.12.100'; //ip meu notebook
+
 const String servidorPorta = '5000';
 String get kApiBaseUrl => 'http://$servidorIP:$servidorPorta';
 

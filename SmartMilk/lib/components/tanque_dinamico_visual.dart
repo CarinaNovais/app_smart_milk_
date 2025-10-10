@@ -1,15 +1,26 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 class TanqueVisual extends StatelessWidget {
-  final double nivel; // 0.0 a 1.0
-  final double width; // largura do tanque
-  final double height; // altura do tanque
-  final bool showPercent; // mostra % no rodapé
+  /// Nível normalizado entre 0.0 e 1.0 quando usado em modo “estático”.
+  final double nivel;
+
+  /// Fonte reativa opcional do nível. Se informado, o widget ignora [nivel]
+  /// e passa a rebuildar automaticamente quando o valor mudar.
+  final ValueListenable<double>? nivelListenable;
+
+  /// Largura e altura do tanque.
+  final double width;
+  final double height;
+
+  /// Exibir percentual abaixo do tanque.
+  final bool showPercent;
 
   const TanqueVisual({
     super.key,
     required this.nivel,
+    this.nivelListenable, // <-- NOVO (opcional)
     this.width = 120,
     this.height = 240,
     this.showPercent = true,
@@ -17,14 +28,34 @@ class TanqueVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final clamped = nivel.clamp(0.0, 1.0);
+    // Se veio um ValueListenable, usamos ele para rebuildar automaticamente.
+    if (nivelListenable != null) {
+      return ValueListenableBuilder<double>(
+        valueListenable: nivelListenable!,
+        builder: (context, value, _) {
+          final clamped = value.clamp(0.0, 1.0).toDouble(); // 👈 cast
+          return _buildWithNivel(context, clamped);
+        },
+      );
+    }
+
+    // Comportamento antigo: usa o 'nivel' passado por parâmetro.
+    final clamped = nivel.clamp(0.0, 1.0).toDouble(); // 👈 cast
+    return _buildWithNivel(context, clamped);
+  }
+
+  Widget _buildWithNivel(BuildContext context, double clamped) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
           width: width,
           height: height,
-          child: CustomPaint(painter: _TanquePainter(nivel: clamped)),
+          // Força rebuild visual quando o valor muda
+          child: CustomPaint(
+            key: ValueKey(clamped),
+            painter: _TanquePainter(nivel: clamped),
+          ),
         ),
         if (showPercent) ...[
           const SizedBox(height: 8),
@@ -53,21 +84,21 @@ class _TanquePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);
-    final r = 22.0;
-    final tanque = RRect.fromRectAndRadius(rect, Radius.circular(r));
+    const r = 22.0;
+    final tanque = RRect.fromRectAndRadius(rect, const Radius.circular(r));
 
     // ===== Outline “metálico” (gradiente) =====
     final outline =
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 3.5
-          ..shader = LinearGradient(
+          ..shader = const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              const Color(0xFFCBD5E1), // slate-300
-              const Color(0xFF94A3B8), // slate-400
-              const Color(0xFF64748B), // slate-500
+              Color(0xFFCBD5E1), // slate-300
+              Color(0xFF94A3B8), // slate-400
+              Color(0xFF64748B), // slate-500
             ],
           ).createShader(rect);
 
@@ -84,10 +115,9 @@ class _TanquePainter extends CustomPainter {
             ],
           ).createShader(rect);
 
-    // Clip do tanque
+    // Clip do tanque e fundo
     canvas.save();
     canvas.clipRRect(tanque);
-    // Fundo
     canvas.drawRect(rect, fundo);
 
     // ===== Leite com gradiente off-white =====
@@ -102,12 +132,12 @@ class _TanquePainter extends CustomPainter {
     final leitePaint =
         Paint()
           ..style = PaintingStyle.fill
-          ..shader = LinearGradient(
+          ..shader = const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              const Color(0xFFF8FAFC), // off-white
-              const Color(0xFFFFFFFF),
+              Color(0xFFF8FAFC), // off-white
+              Color(0xFFFFFFFF),
             ],
           ).createShader(leiteRect);
 
@@ -117,7 +147,7 @@ class _TanquePainter extends CustomPainter {
     if (alturaLeite > 2) {
       final ySurface = size.height - alturaLeite;
       final path = Path();
-      final amplitude = 4.0;
+      const amplitude = 4.0;
       final wavelength = size.width / 1.2;
       path.moveTo(0, ySurface);
 
@@ -126,9 +156,10 @@ class _TanquePainter extends CustomPainter {
             ySurface + math.sin((x / wavelength) * 2 * math.pi) * amplitude;
         path.lineTo(x, y);
       }
-      path.lineTo(size.width, size.height);
-      path.lineTo(0, size.height);
-      path.close();
+      path
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close();
 
       final ondaPaint =
           Paint()
@@ -141,15 +172,15 @@ class _TanquePainter extends CustomPainter {
     // ===== Reflexo vertical (highlight) =====
     final highlight =
         Paint()
-          ..shader = LinearGradient(
+          ..shader = const LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Colors.white.withOpacity(0.20),
+              Color.fromARGB(51, 255, 255, 255), // 0.20
               Colors.transparent,
-              Colors.white.withOpacity(0.10),
+              Color.fromARGB(26, 255, 255, 255), // 0.10
             ],
-            stops: const [0.0, 0.45, 1.0],
+            stops: [0.0, 0.45, 1.0],
           ).createShader(
             Rect.fromLTWH(size.width * 0.12, 0, size.width * 0.18, size.height),
           );
@@ -184,6 +215,8 @@ class _TanquePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _TanquePainter oldDelegate) =>
-      oldDelegate.nivel != nivel;
+  bool shouldRepaint(covariant _TanquePainter oldDelegate) {
+    // Tolerância para doubles evita “não repintar” por arredondamentos
+    return (oldDelegate.nivel - nivel).abs() > 0.0001;
+  }
 }

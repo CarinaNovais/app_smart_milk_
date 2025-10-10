@@ -1,5 +1,7 @@
+import 'dart:async'; // 👈 Timer
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart'; // 👈 ValueNotifier
 import 'package:app_smart_milk/components/tanque_dinamico_visual.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:app_smart_milk/components/navbar.dart';
@@ -13,22 +15,55 @@ class DadosTanquePage extends StatefulWidget {
 }
 
 class _DadosTanquePageState extends State<DadosTanquePage> {
-  double nivel = 0.0;
+  // Nível reativo (0.0 a 1.0) para o TanqueVisual
+  final ValueNotifier<double> nivelNotifier = ValueNotifier<double>(0.0);
+
+  // Métricas para a grade
   List<String> dadosLeite = ['--', '--', '--', '--', '--', '--'];
+
+  // Diagnóstico visual
+  DateTime? _ultimaAtualizacao;
+
   late MQTTService mqtt;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
     mqtt = MQTTService();
+
     mqtt.configurarCallbacks(
       onLoginAceito: () {},
       onLoginNegado: (_) {},
       onCadastroAceito: () {},
       onCadastroNegado: (_) {},
       onDadosTanque: (dados) {
+        if (!mounted) return;
+
+        // Normaliza com segurança e loga
+        const double capacidadeL = 5.0;
+        final bruto = dados['nivel'];
+        final n = (bruto is num ? bruto.toDouble() : 0.0);
+        final normalizado = (n / capacidadeL).clamp(0.0, 1.0);
+
+        debugPrint(
+          '[MQTT] onDadosTanque: nivelBruto=$bruto '
+          'nivelNormalizado=${normalizado.toStringAsFixed(3)} '
+          'payload=$dados',
+        );
+
+        // ⚠️ ValueNotifier NÃO emite se valor novo == antigo.
+        // Então vamos garantir repaint:
+        if (nivelNotifier.value == normalizado) {
+          // força notificação mesmo sem mudança
+          nivelNotifier.notifyListeners();
+        } else {
+          nivelNotifier.value = normalizado;
+        }
+
+        // Atualiza as métricas + timestamp
         setState(() {
-          nivel = (dados['nivel'] ?? 0) / 100.0;
+          _ultimaAtualizacao = DateTime.now();
           dadosLeite = [
             '${dados['ph']}',
             '${dados['temp']}°C',
@@ -45,9 +80,23 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
       onBuscarDevolutivas: (_) {},
       onPegandoTanqueAceito: () {},
     );
+
     mqtt.inicializar().then((_) {
+      // Primeira busca
       mqtt.buscarDadosTanque();
+      // 🔁 Polling leve: continue pedindo dados periodicamente
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+        if (mounted) mqtt.buscarDadosTanque();
+      });
     });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    nivelNotifier.dispose();
+    super.dispose();
   }
 
   String _rotuloDoDado(int index) {
@@ -83,30 +132,52 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
     );
 
     return Container(
-      // gradiente por FORA do Scaffold
       decoration: BoxDecoration(gradient: gradient),
       child: Scaffold(
-        backgroundColor: Colors.transparent, // sem cor sólida
+        backgroundColor: Colors.transparent,
         extendBody: true,
 
         appBar: Navbar(
           title: 'Dados do tanque',
-          style: const TextStyle(fontSize: 20), // cor é aplicada pela Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoute: '/homeProdutor',
           showEndDrawerButton: true,
         ),
 
         endDrawer: MenuDrawer(mqtt: mqtt),
 
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            mqtt.buscarDadosTanque();
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Solicitando dados do tanque...')),
+            );
+          },
+          tooltip: 'Atualizar agora',
+          child: const Icon(Icons.refresh),
+        ),
+
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               children: [
-                const SizedBox(height: 60),
-                // tanque visual
-                TanqueVisual(nivel: nivel),
+                const SizedBox(height: 16),
+                if (_ultimaAtualizacao != null)
+                  Text(
+                    'Última atualização: ${_ultimaAtualizacao!.toLocal()}',
+                    style: const TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                const SizedBox(height: 32),
+
+                // Tanque visual reativo
+                TanqueVisual(
+                  nivel: 0.0, // ignorado quando passar o listenable
+                  nivelListenable: nivelNotifier,
+                ),
+
                 const SizedBox(height: 24),
+
                 // grid de métricas
                 Expanded(
                   child: GridView.count(
@@ -141,7 +212,7 @@ class _DadoBox extends StatelessWidget {
     if (s.contains('ph')) return Icons.science_outlined;
     if (s.contains('temperatura')) return Icons.thermostat_rounded;
     if (s.contains('amônia')) return Icons.bubble_chart_outlined;
-    if (s.contains('carbono')) return Icons.co2; // disponível no Material Icons
+    if (s.contains('carbono')) return Icons.co2;
     if (s.contains('metano')) return Icons.cloud_queue_rounded;
     if (s.contains('região') || s.contains('tanque')) {
       return Icons.badge_outlined;
@@ -156,7 +227,7 @@ class _DadoBox extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF0FAFE), // sólido (sem vidro/blur)
+        color: const Color(0xFFF0FAFE),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: appBlue.withOpacity(0.22), width: 1),
         boxShadow: [
