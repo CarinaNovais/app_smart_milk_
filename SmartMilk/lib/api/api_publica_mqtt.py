@@ -15,16 +15,16 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:5000")
 #notebook
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.12.102", #ip computador joao
+        host="192.168.66.67", #colocar ip notebook
         user="root",
         password="root",
         database="mimosa"
     )
-
-MQTT_BROKER = "192.168.12.103"
+#ip broker
+MQTT_BROKER = "192.168.66.11" #colocar ip broker
 MQTT_PORT = 1883
-MQTT_USERNAME = "admin"
-MQTT_PASSWORD = "admin"
+MQTT_USERNAME = "csilab"
+MQTT_PASSWORD = "WhoAmI#2024"
 
 # MQTT_BROKER = "192.168.66.50"
 # MQTT_PORT = 1883
@@ -245,12 +245,12 @@ def historico_coleta():
 
         campos_necessarios = [
             "nome", "idtanque", "idregiao", "ph",
-            "temperatura", "nivel", "amonia", "carbono", "metano","coletor","placa"
+            "temperatura", "nivel", "amonia", "carbono", "metano","coletor","placa","condutividade","turbidez","co2"
         ]
 
         for campo in campos_necessarios:
-            if campo not in dados:
-                return jsonify({"erro": f"Campo '{campo}' ausente."}), 400
+            if campo not in dados or dados[campo] is None:
+                return jsonify({"erro": f"Campo '{campo}' ausente ou nulo."}), 400
             
         publish.single(
             "cadastroHistoricoColeta/entrada",
@@ -305,7 +305,7 @@ def editar_vaca():
 
     print("📥 Dados recebidos:", dados)
     
-    if not campo or not valor or not usuario_id or not vaca_id:
+    if not campo or valor is None or usuario_id is None or vaca_id is None:
         return jsonify({"erro": "Faltam dados obrigatórios"}), 400
 
     try:
@@ -319,9 +319,9 @@ def editar_vaca():
                 'password': MQTT_PASSWORD
             }
         )
+        return jsonify({"status": "atualização da vaca publicada"}), 200
     except Exception as e:
         return jsonify({"erro": f"Falha ao publicar MQTT: {e}"}), 500
-        # return jsonify({"status": "atualização da vaca publicada"}), 200
 
 #atualizar status do tanque
 @app.route('/atualizarStatusTanque', methods=['POST'])

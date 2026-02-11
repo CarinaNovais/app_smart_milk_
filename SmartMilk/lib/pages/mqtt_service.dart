@@ -111,12 +111,6 @@ class MQTTService {
   StreamSubscription<List<MqttReceivedMessage<MqttMessage>>>? _updatesSub;
 
   Future<void> inicializar() async {
-    // client = MqttServerClient('192.168.66.50', 'app_smart_milk_cliente01');
-    // client = MqttServerClient(
-    //   '192.168.66.50',
-    //   'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
-    // );
-
     if (_isInitialized &&
         client.connectionStatus?.state == MqttConnectionState.connected) {
       return; // já conectado
@@ -124,13 +118,8 @@ class MQTTService {
     if (_isConnecting) return;
     _isConnecting = true;
 
-    // client = MqttServerClient(
-    //   '192.168.244.220', //arrumar ip broker joao
-    //   'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
-    // );
-
     client = MqttServerClient(
-      '192.168.12.103', //arrumar ip broker joao
+      '192.168.66.11', //arrumar ip colocar ip broker
       'app_smart_milk_cliente01_${DateTime.now().millisecondsSinceEpoch}',
     );
 
@@ -150,9 +139,9 @@ class MQTTService {
     };
 
     try {
-      //arrumar
-      final connectionStatus = await client.connect('admin', 'admin');
-      // final connectionStatus = await client.connect('csilab', 'WhoAmI#2023');
+      //arrumar colocar certo
+      //final connectionStatus = await client.connect('admin', 'admin');
+      final connectionStatus = await client.connect('csilab', 'WhoAmI#2024');
 
       if (connectionStatus != null &&
           connectionStatus.state == MqttConnectionState.connected) {

@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
-
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +11,26 @@ import 'package:app_smart_milk/components/menuDrawer.dart';
 import 'package:app_smart_milk/pages/detalhesTanquePage.dart';
 
 const Color appBlue = Color(0xFF0097B2);
+
+String _decodeHtmlEntities(String s) {
+  return s
+      .replaceAll('&#34;', '"')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&apos;', "'")
+      .replaceAll('&amp;', '&')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>');
+}
+
+String _fixWeirdQr(String s) {
+  var out = _decodeHtmlEntities(s.trim());
+
+  // Corrige caso venha com ; grudado no nome da chave: "idtanque;":5
+  out = out.replaceAll(RegExp(r'"([a-zA-Z_]+);"\s*:'), r'"\1":');
+
+  return out;
+}
 
 class QRViewExample extends StatefulWidget {
   const QRViewExample({super.key});
@@ -30,6 +48,12 @@ class _QRViewExampleState extends State<QRViewExample> {
   bool _isProcessing = false;
   bool _flashOn = false;
   bool _hasPermission = true;
+
+  double _toDouble(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
 
   @override
   void initState() {
@@ -54,12 +78,14 @@ class _QRViewExampleState extends State<QRViewExample> {
                   nome: dados['nome'],
                   idTanque: int.parse(dados['idtanque'].toString()),
                   idRegiao: int.parse(dados['idregiao'].toString()),
-                  ph: double.parse(dados['ph'].toString()),
-                  temp: double.parse(dados['temp'].toString()),
-                  nivel: double.parse(dados['nivel'].toString()),
-                  amonia: double.parse(dados['amonia'].toString()),
-                  carbono: double.parse(dados['carbono'].toString()),
-                  metano: double.parse(dados['metano'].toString()),
+                  ph: _toDouble(dados['ph']),
+                  temp: _toDouble(dados['temp']),
+                  nivel: _toDouble(dados['nivel']),
+                  amonia: _toDouble(dados['amonia']),
+                  metano: _toDouble(dados['metano']),
+                  condutividade: _toDouble(dados['condutividade']),
+                  turbidez: _toDouble(dados['turbidez']),
+                  co2: _toDouble(dados['co2']),
                 ),
           ),
         ).then((_) {
@@ -281,7 +307,10 @@ class _QRViewExampleState extends State<QRViewExample> {
       }
 
       try {
-        final Map<String, dynamic> json = jsonDecode(data);
+        //final Map<String, dynamic> json = jsonDecode(data);
+        final fixed = _fixWeirdQr(data);
+        final Map<String, dynamic> json = jsonDecode(fixed);
+
         final String nome = json['nome'].toString();
         final String idtanque = json['idtanque'].toString();
         final String idregiao = json['idregiao'].toString();

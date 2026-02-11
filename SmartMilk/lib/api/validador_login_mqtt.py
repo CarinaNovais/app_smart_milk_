@@ -17,7 +17,7 @@ JWT_EXPIRACAO_MINUTOS = 30 #tempo de expiração do token
 # Função para conectar no banco de dados
 def conectar_banco():
     return mysql.connector.connect(
-        host="192.168.12.102", #ip computador joao
+        host="192.168.66.67", #colocar ip notebook
         user="root",
         password="root",
         database="mimosa"
@@ -32,6 +32,9 @@ def conectar_banco():
 #         database="mimosa"
 #     )
 
+#funcao helper
+def publish_json(topic: str, data: dict):
+    client.publish(topic, json.dumps(data, ensure_ascii=False, default=str).encode("utf-8"))
 
 
 #função gerar token JWT
@@ -47,27 +50,53 @@ def gerar_token(usuario):
 
 #funcao verificar se login esta correto no MyQL
 #banco ipJoao
-def verificar_login(nome, senha, cargo):
+def verificar_login(nome, senha, cargo_escolhido):
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
 
-        if cargo == 0:
-            consulta = "SELECT id, nome, senha, idtanque, idregiao, contato, foto FROM usuario WHERE nome = %s AND senha = %s AND cargo = %s"
-            cursor.execute(consulta, (nome, senha, cargo))
-            resultado = cursor.fetchone()
+        # 1) valida credenciais primeiro
+        cursor.execute(
+            "SELECT id, nome, senha, idtanque, idregiao, contato, foto, cargo "
+            "FROM usuario WHERE nome=%s AND senha=%s",
+            (nome, senha)
+        )
+        user = cursor.fetchone()
+        if not user:
             conn.close()
-            return resultado
+            return None  # credenciais realmente inválidas
+
+        cargo_db = user[7]  # coluna cargo
+
+        # 2) ainda não aprovado
+        if cargo_db is None:
+            conn.close()
+            return "PENDENTE"
+
+        # 3) clicou no botão errado
+        if int(cargo_db) != int(cargo_escolhido):
+            conn.close()
+            return ("CARGO_DIFERENTE", int(cargo_db))
         
-        elif cargo == 2:
-            consulta ="""SELECT usuario.id, usuario.nome, usuario.senha,usuario.idregiao, coletores.placa, usuario.contato, usuario.foto FROM usuario JOIN coletores ON coletores.coletor = usuario.nome WHERE usuario.nome = %s AND usuario.senha = %s AND usuario.cargo = %s"""
-            cursor.execute(consulta, (nome, senha, cargo))
-            resultado = cursor.fetchone()
+        # 4) cargo bate -> retorna dados conforme o cargo
+        if cargo_db == 0:
             conn.close()
-            return resultado
-        else:
+            return user[:7]  # id, nome, senha, idtanque, idregiao, contato, foto
+
+        elif cargo_db == 2:
+            cursor.execute("""
+                SELECT usuario.id, usuario.nome, usuario.senha, usuario.idregiao,
+                       coletores.placa, usuario.contato, usuario.foto
+                FROM usuario
+                JOIN coletores ON coletores.coletor = usuario.nome
+                WHERE usuario.nome=%s AND usuario.senha=%s
+            """, (nome, senha))
+            res = cursor.fetchone()
             conn.close()
-            return None
+            return res
+
+        conn.close()
+        return None
         
     except Exception as erro:
         print("Erro ao acessar banco:", erro)
@@ -134,13 +163,13 @@ def deletar_vaca(usuario_id, vaca_id):
         return False, f"Erro ao deletar vaca: {erro}"
 
 #status- (a ser analisado)
-def atualizar_status_tanque(idtanque, campo, valor):
+def atualizar_status_tanque(idtanque, idregiao, campo, valor):
     try:
         conn = conectar_banco()
         cursor = conn.cursor()
 
-        query = f"UPDATE tanque SET {campo} = %s WHERE idtanque = %s"
-        cursor.execute(query, (valor, idtanque))
+        query = f"UPDATE tanque SET {campo}=%s WHERE idtanque=%s AND idregiao=%s"
+        cursor.execute(query, (valor, idtanque,idregiao))
 
         conn.commit()
         conn.close()
@@ -154,51 +183,61 @@ def cadastrar_historico_coleta(dados):
     conn = None
     cursor = None
     try:
-        # validação mínima
-        # required = ["nome","idtanque","idregiao","ph","temperatura","nivel",
-        #             "amonia","carbono","metano","coletor","placa"]
-        # faltando = [k for k in required if k not in dados]
-        # if faltando:
-        #     return False, f"Campos obrigatórios ausentes: {', '.join(faltando)}"
 
         conn = conectar_banco()
         cursor = conn.cursor()
 
         insert_sql = """
-            INSERT INTO coleta_tanque
-                (produtor, idtanque, idregiao, ph, temperatura, nivel,
-                 amonia, carbono, metano, coletor, placa)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
+    INSERT INTO coleta_tanque
+  (produtor, idTanque, idRegiao, ph, temperatura, nivel,
+   amonia, metano, coletor, placa, condutividade, turbidez, co2)
+VALUES
+  (%s, %s, %s, %s, %s, %s,
+   %s, %s, %s, %s, %s, %s, %s)
+"""
+
         valores = (
-            dados["nome"],
+            dados["nome"],          # produtor
             dados["idtanque"],
             dados["idregiao"],
             dados["ph"],
             dados["temperatura"],
             dados["nivel"],
             dados["amonia"],
-            dados["carbono"],
             dados["metano"],
             dados["coletor"],
             dados["placa"],
+            dados["condutividade"],
+            dados["turbidez"],
+            dados["co2"],
         )
         cursor.execute(insert_sql, valores)
 
-        update_sql = """
-            UPDATE tanque
-               SET status_tanque = %s
-             WHERE idtanque = %s AND idregiao = %s
-        """
-        cursor.execute(update_sql, ('coletado', dados["idtanque"], dados["idregiao"]))
-
-        # Se precisar zerar campos do tanque após coleta, descomente e mantenha padronização:
-        # cursor.execute("""
-        #     UPDATE tanque
-        #        SET ph=NULL, temperatura=NULL, nivel=NULL, amonia=NULL,
-        #            carbono=NULL, metano=NULL
-        #      WHERE idtanque=%s AND idregiao=%s
-        # """, (dados["idtanque"], dados["idregiao"]))
+        update_sql =  """
+    UPDATE tanque
+       SET status_tanque = %s,
+           ph = %s,
+           temp = %s,
+           nivel = %s,
+           amonia = %s,
+           metano = %s,
+           condutividade = %s,
+           turbidez = %s,
+           co2 = %s
+     WHERE idtanque = %s AND idregiao = %s
+"""
+        cursor.execute(update_sql, (
+    'coletado',
+    dados["ph"],
+    dados["temperatura"],
+    dados["nivel"],
+    dados["amonia"],
+    dados["metano"],
+    dados["condutividade"],
+    dados["turbidez"],
+    dados["co2"],
+    dados["idtanque"],
+    dados["idregiao"]))
 
         conn.commit()
         return True, "Cadastro de coleta realizado com sucesso"
@@ -284,14 +323,15 @@ def buscarDadosTanque(nome, idtanque, idregiao):
                 t.temp,
                 t.nivel,  
                 t.amonia,
-                t.carbono,                       
-                t.metano
-            FROM 
-                usuario u
-            JOIN 
-                tanque t ON u.idtanque = t.idtanque AND u.idregiao = t.idregiao
-            WHERE 
-                u.nome = %s AND u.idtanque = %s AND u.idregiao = %s
+                t.metano,
+                t.condutividade,
+                t.turbidez,
+                t.co2
+            FROM usuario u
+            JOIN tanque t 
+              ON u.idtanque = t.idtanque 
+             AND u.idregiao = t.idregiao
+            WHERE u.nome = %s AND u.idtanque = %s AND u.idregiao = %s
         """
         cursor.execute(query, (nome, idtanque, idregiao))
         resultado = cursor.fetchone()
@@ -299,6 +339,12 @@ def buscarDadosTanque(nome, idtanque, idregiao):
     except Exception as erro:
         print("Erro ao buscar dados do tanque:", erro)
         return None
+    finally:
+        try:
+            cursor.close()
+            conn.close()
+        except Exception:
+            pass
     
 def buscarColetas(nome): 
     try:
@@ -307,9 +353,16 @@ def buscarColetas(nome):
 
         conn = conectar_banco()
         cursor = conn.cursor()
-       
+        query = """
+            SELECT
+            produtor, idTanque, idRegiao, ph, temperatura, nivel,
+            amonia, metano, coletor, placa,
+            condutividade, turbidez, co2
+            FROM coleta_tanque
+            WHERE coletor = %s
+            ORDER BY id DESC
+            """
 
-        query = """SELECT * FROM coleta_tanque WHERE coletor = %s"""
         cursor.execute(query, (nome,))
         resultado = cursor.fetchall()
         print(f"🔎 {len(resultado)} resultados encontrados.")
@@ -331,10 +384,12 @@ def formatar_coletas(dados, nome):
             "temperatura": f"{linha[4]:.2f}",
             "nivel": f"{linha[5]:.2f}",
             "amonia": f"{linha[6]:.2f}",
-            "carbono": f"{linha[7]:.2f}",
-            "metano": f"{linha[8]:.2f}",
+            "metano": f"{linha[7]:.2f}",
             "coletor": nome,
-            "placa": str(linha[10]),
+            "placa": str(linha[9]),
+            "condutividade": f"{linha[10]:.2f}",
+            "turbidez": f"{linha[11]:.2f}",
+            "co2": f"{linha[12]:.2f}"
         }
         for linha in dados
     ]
@@ -355,13 +410,16 @@ def buscarDepositosProdutor(usuario_id):
   hdp.temperatura,
   hdp.nivel,
   hdp.amonia,
-  hdp.carbono,
   hdp.metano,
   hdp.dataDeposito,
+  hdp.condutividade,
+  hdp.turbidez,
+  hdp.co2,
   u.nome
 FROM historico_deposito_produtor hdp
-INNER JOIN usuario u ON hdp.usuario_id = u.id
-WHERE u.id = %s;
+JOIN usuario u ON hdp.usuario_id = u.id
+WHERE hdp.usuario_id = %s
+ORDER BY hdp.dataDeposito DESC
 
         """
 
@@ -386,10 +444,12 @@ def formatar_depositos(dados, usuario_id):
             "temperatura": str(linha[4]),
             "nivel": str(linha[5]),
             "amonia": str(linha[6]),
-            "carbono": str(linha[7]),
-            "metano": str(linha[8]),
-            "dataDeposito": str(linha[9]),
-            "nome":str(linha[10]),
+            "metano": str(linha[7]),
+            "dataDeposito": str(linha[8]),
+            "condutividade": str(linha[9]),
+            "turbidez": str(linha[10]),
+            "co2": str(linha[11]),
+            "nome":str(linha[12]),
 
         }
         for linha in dados
@@ -670,74 +730,111 @@ def formatar_lista_tanques_selecionados(dados, coletor_id):
 
 #funcao que trata todas as mensagens recebidas
 def on_message(client, userdata, msg):
-    try:
-        #extraindo dados para fazer a validação
-        payload = json.loads(msg.payload.decode()) #transforma json em dicionario python
-        topico = msg.topic
 
+    topico =  msg.topic
+    raw = msg.payload
+
+    #decodifica com fallback
+    try:
+        txt = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        txt = raw.decode("latin-1")
+
+    #virar json
+    try:
+        payload = json.loads(txt)
+
+    except json.JSONDecodeError as e:
+        print(f" Payload não é JSON | topico={topico} | erro={e}")
+        print(f" txt(início)={txt[:120]}")
+        return
+    
+        #extraindo dados para fazer a validação
+        # payload = json.loads(msg.payload.decode()) #transforma json em dicionario python
+        # topico = msg.topic
+    try:
         if topico == "login/entrada":
             nome = payload.get("nome")
             senha = payload.get("senha")
-            cargo = payload.get("cargo")
-            resultado = verificar_login(nome, senha, cargo)
+            cargo_escolhido = payload.get("cargo")
+
+            resultado = verificar_login(nome, senha, cargo_escolhido)
             print("🔍 Resultado do login:", resultado) 
 
-            if resultado:
-                token, expira_em = gerar_token(nome)
-                if cargo == 0:
-                    # produtor
-                    foto_bytes = resultado[6]
-
-                    if foto_bytes:
-                        foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
-                    else:
-                        foto_base64 = None
-                    
-                    resposta = {
-                        "status": "aceito",
-                        "token": token,
-                        "expira_em": expira_em.isoformat(),
-                        "id":resultado[0],
-                        "nome": resultado[1],
-                        "senha": resultado[2],
-                        "idtanque": resultado[3],
-                        "idregiao": resultado[4],
-                        "contato":resultado[5],
-                        "foto":foto_base64,
-                        "cargo":cargo
-                    }
-                
-                elif cargo == 2:
-                    # coletor
-                    foto_bytes = resultado[6]
-                    if foto_bytes:
-                        foto_base64 = base64.b64encode(foto_bytes).decode('utf-8')
-                    else:
-                        foto_base64 = None
-
-                    resposta = {
-                        "status": "aceito",
-                        "token": token,
-                        "expira_em": expira_em.isoformat(),
-                        "id":resultado[0],
-                        "nome": resultado[1],
-                        "senha": resultado[2],
-                        "idregiao": resultado[3],
-                        "placa": resultado[4],
-                        "contato":resultado[5],
-                        "foto":foto_base64,
-                        "cargo":cargo
-                    }
-
-            else:
+            #  credenciais inválidas
+            if resultado is None:
                 resposta = {
                     "status": "negado",
                     "mensagem": "Credenciais inválidas"
                 }
+                publish_json("login/resultado", resposta)
+                return
+            # ⏳ cadastro ainda não aprovado pelo admin
+            if resultado == "PENDENTE":
+                resposta = {
+                    "status": "negado",
+                    "mensagem": "Cadastro pendente. Aguarde o administrador liberar seu acesso."
+                }
+                publish_json("login/resultado", resposta)
+                return
 
-            client.publish("login/resultado", json.dumps(resposta))
-            print(f"[MQTT] Resultado enviado: {resposta}")   
+            # clicou no botão errado
+            if isinstance(resultado, tuple) and resultado[0] == "CARGO_DIFERENTE":
+                cargo_real = resultado[1]
+                resposta = {
+                    "status": "negado",
+                    "mensagem": (
+                        f"Seu acesso é de "
+                        f"{'Produtor' if cargo_real == 0 else 'Coletor'}. "
+                        f"Selecione o botão correto."
+                    )
+                }
+                publish_json("login/resultado", resposta)
+                return
 
+            # login válido → gera token
+            token, expira_em = gerar_token(nome)
+
+            if cargo_escolhido == 0:
+                # produtor
+                foto_bytes = resultado[6]
+                foto_base64 = base64.b64encode(foto_bytes).decode() if foto_bytes else None
+
+                resposta = {
+                    "status": "aceito",
+                    "token": token,
+                    "expira_em": expira_em.isoformat(),
+                    "id": resultado[0],
+                    "nome": resultado[1],
+                    "senha": resultado[2],
+                    "idtanque": resultado[3],
+                    "idregiao": resultado[4],
+                    "contato": resultado[5],
+                    "foto": foto_base64,
+                    "cargo": cargo_escolhido
+                }
+
+            elif cargo_escolhido == 2:
+                # coletor
+                foto_bytes = resultado[6]
+                foto_base64 = base64.b64encode(foto_bytes).decode() if foto_bytes else None
+
+                resposta = {
+                    "status": "aceito",
+                    "token": token,
+                    "expira_em": expira_em.isoformat(),
+                    "id": resultado[0],
+                    "nome": resultado[1],
+                    "senha": resultado[2],
+                    "idregiao": resultado[3],
+                    "placa": resultado[4],
+                    "contato": resultado[5],
+                    "foto": foto_base64,
+                    "cargo": cargo_escolhido
+                }
+            publish_json("login/resultado", resposta)
+            print(f"[MQTT] Resultado enviado: {resposta}")
+            
         elif topico == "cadastro/entrada":
             nome = payload.get("nome")
             senha = payload.get("senha")
@@ -768,15 +865,14 @@ def on_message(client, userdata, msg):
             "status": "negado",
             "mensagem": mensagem
             }
-
-            client.publish("cadastro/resultado", json.dumps(resposta))
+            publish_json("cadastro/resultado", resposta)
             print(f"[MQTT] Resultado CADASTRO enviado: {resposta}")
 
         elif topico == "tanque/buscar":
             nome = payload.get("nome")
             idtanque = payload.get("idtanque")
             idregiao = payload.get("idregiao")
-            dados = buscarDadosTanque(nome,idtanque,idregiao)
+            dados = buscarDadosTanque(nome, idtanque, idregiao)
 
             if dados:
                 resposta = {
@@ -789,16 +885,15 @@ def on_message(client, userdata, msg):
                         "temp": dados[3],
                         "nivel": dados[4],
                         "amonia": dados[5],
-                        "carbono": dados[6],
-                        "metano": dados[7]
+                        "metano": dados[6],
+                        "condutividade": dados[7],
+                        "turbidez": dados[8],
+                        "co2": dados[9],
                     }
                 }
-            else: 
-                resposta = {
-                    "status": "erro",
-                    "mensagem": "Usuário ou tanque não encontrado"
-                }
-            client.publish("tanque/resposta", json.dumps(resposta))
+            else:
+                resposta = {"status": "erro", "mensagem": "Usuário ou tanque não encontrado"}
+            publish_json("tanque/resposta", resposta)
             print(f"[MQTT] Dados do tanque enviados para 'tanque/resposta': {resposta}")
         
         elif topico == "fotoAtualizada/entrada":
@@ -811,7 +906,7 @@ def on_message(client, userdata, msg):
 
             if not idusuario or not foto_base64 or not nome:
                 resposta = {"status": "negado", "mensagem": "Dados incompletos para atualizar foto"}
-                client.publish("fotoAtualizada/resultado", json.dumps(resposta))
+                publish_json("fotoAtualizada/resultado", resposta)
                 return
 
             try:
@@ -836,7 +931,7 @@ def on_message(client, userdata, msg):
                 print("Erro na atualização da foto:", erro)
                 resposta = {"status": "negado", "mensagem": "Erro ao decodificar ou atualizar foto"}
             
-            client.publish("fotoAtualizada/resultado", json.dumps(resposta))
+            publish_json("fotoAtualizada/resultado", resposta)
             print(f"📤 Resposta enviada ao app: {resposta}")
 
 
@@ -858,7 +953,7 @@ def on_message(client, userdata, msg):
                     "valor":valor
                 }
 
-            client.publish("editarUsuario/resultado", json.dumps(resposta))
+            publish_json("editarUsuario/resultado", resposta)
             print(f"[MQTT] Atualização de usuário enviada: {resposta}")
             
         elif topico == "cadastroHistoricoColeta/entrada":
@@ -868,54 +963,51 @@ def on_message(client, userdata, msg):
                 "status": "aceito" if sucesso else "negado",
                 "mensagem": mensagem
             }
-
-            client.publish("cadastroHistoricoColeta/resultado", json.dumps(resposta))
+            publish_json("cadastroHistoricoColeta/resultado", resposta)
             print(f"[MQTT] Resultado histórico enviado: {resposta}")
           
-        elif topico == "tanqueIdentificado/entrada": #qrcode
+        elif topico == "tanqueIdentificado/entrada":  # qrcode
             print("✅ Mensagem recebida no tópico tanqueIdentificado/entrada")
             nome = payload.get("nome")
             idregiao = payload.get("idregiao")
             idtanque = payload.get("idtanque")
-            
+
             try:
                 idtanque = int(idtanque)
                 idregiao = int(idregiao)
             except (TypeError, ValueError):
                 resposta = {"status": "negado", "mensagem": "ID inválido"}
-                client.publish("tanqueIdentificado/resultado", json.dumps(resposta))
+                publish_json("tanqueIdentificado/resultado", resposta)
                 return
-    
-            if not nome or not idtanque or not idregiao:
+
+            if not nome or idtanque is None or idregiao is None:
                 resposta = {"status": "negado", "mensagem": "Dados incompletos"}
-                client.publish("tanqueIdentificado/resultado", json.dumps(resposta))
+                publish_json("tanqueIdentificado/resultado", resposta)
                 return
-            
-            dados = buscarDadosTanque(nome,idtanque,idregiao)
+
+            dados = buscarDadosTanque(nome, idtanque, idregiao)
 
             if dados:
                 resposta = {
                     "status": "ok",
                     "dados": {
-                    "nome":nome,
-                    "idtanque": str(dados[0]),
-                    "idregiao": str(dados[1]),
-                    "ph": f"{dados[2]:.2f}",      # formatado como string com 2 casas decimais
-                    "temp": f"{dados[3]:.2f}",
-                    "nivel": f"{dados[4]:.2f}",
-                    "amonia": f"{dados[5]:.2f}",
-                    "carbono": f"{dados[6]:.2f}",
-                    "metano": f"{dados[7]:.2f}",
-                    }
+                        "nome": nome,
+                        "idtanque": str(dados[0]),
+                        "idregiao": str(dados[1]),
+                        "ph": f"{dados[2]:.2f}" if dados[2] is not None else None,
+                        "temp": f"{dados[3]:.2f}" if dados[3] is not None else None,
+                        "nivel": f"{dados[4]:.2f}" if dados[4] is not None else None,
+                        "amonia": f"{dados[5]:.2f}" if dados[5] is not None else None,
+                        "metano": f"{dados[6]:.2f}" if dados[6] is not None else None,
+                        "condutividade": f"{dados[7]:.2f}" if dados[7] is not None else None,
+                        "turbidez": f"{dados[8]:.2f}" if dados[8] is not None else None,
+                        "co2": f"{dados[9]:.2f}" if dados[9] is not None else None,
+                    },
                 }
-
             else:
-                resposta = {
-                    "status": "negado",
-                    "mensagem": "Tanque não identificado"
-                }
+                resposta = {"status": "negado", "mensagem": "Tanque não identificado"}
 
-            client.publish("tanqueIdentificado/resultado", json.dumps(resposta))
+            publish_json("tanqueIdentificado/resultado", resposta)
 
         elif topico == "buscarColetas/entrada":
             print("✅ Mensagem recebida no tópico buscarColetas/entrada")
@@ -934,7 +1026,7 @@ def on_message(client, userdata, msg):
                     "mensagem": f"Nenhuma coleta encontrada para o produtor '{nome}'."
                 }
 
-            client.publish("buscarColetas/resultado", json.dumps(resposta, default=str))
+            publish_json("buscarColetas/resultado", resposta)
             print(f"[MQTT] Dados enviados para 'buscarColetas/resultado': {resposta}")
         
         elif topico == "buscarDepositosProdutor/entrada":
@@ -953,7 +1045,7 @@ def on_message(client, userdata, msg):
                     "mensagem": f"Nenhum deposito encontrado para o produtor de id '{usuario_id}'."
                 }
 
-            client.publish("buscarDepositosProdutor/resultado", json.dumps(resposta, default=str))
+            publish_json("buscarDepositosProdutor/resultado", resposta)
             print(f"[MQTT] Dados enviados para 'buscarDepositosProdutor/resultado': {resposta}")
 
         elif topico == "cadastroVaca/entrada":
@@ -977,7 +1069,7 @@ def on_message(client, userdata, msg):
             "mensagem": mensagem
             }
 
-            client.publish("cadastroVaca/resultado", json.dumps(resposta))
+            publish_json("cadastroVaca/resultado", resposta)
             print(f"[MQTT] Resultado CADASTRO VACA enviado: {resposta}")
 
         elif topico == "buscarVacas/entrada":
@@ -992,7 +1084,7 @@ def on_message(client, userdata, msg):
             "dados": formatar_lista_vacas(dados, usuario_id) if dados else []
             }
 
-            client.publish("buscarVacas/resultado", json.dumps(resposta, default=str))
+            publish_json("buscarVacas/resultado", resposta)
             print(f"[MQTT] Dados enviados para 'buscarVacas/resultado': {resposta}")
 
 
@@ -1013,7 +1105,7 @@ def on_message(client, userdata, msg):
                     "valor":valor
                 }
 
-            client.publish("editarVaca/resultado", json.dumps(resposta))
+            publish_json("editarVaca/resultado", resposta)
             print(f"[MQTT] Atualização da vaca enviada: {resposta}")
 
         elif topico == "deletarVaca/entrada":
@@ -1027,7 +1119,7 @@ def on_message(client, userdata, msg):
                     "status": "aceito" if sucesso else "negado",
                     "mensagem": mensagem,
                 }
-                client.publish("deletarVaca/resultado", json.dumps(resposta))
+                publish_json("deletarVaca/resultado", resposta)
                 print(f"[MQTT] Solicitacao de exclusao enviada: {resposta}")
 
         elif topico == "buscarDevolutivas/entrada":
@@ -1044,21 +1136,22 @@ def on_message(client, userdata, msg):
                     "mensagem": "Nenhuma devolutiva encontrada"
                 }
 
-            client.publish("buscarDevolutivas/resultado", json.dumps(resposta, default=str))
+            publish_json("buscarDevolutivas/resultado", resposta)
             print(f"[MQTT] Dados enviados para 'buscarDevolutivas/resultado': {resposta}")
             
         elif topico == "atualizarStatusTanque/entrada":
             idtanque = payload.get("idtanque")
             campo = payload.get("campo")
             valor = payload.get("valor")
-            sucesso, mensagem = atualizar_status_tanque(idtanque, campo, valor)
+            idregiao = payload.get("idregiao")
+            sucesso, mensagem = atualizar_status_tanque(idtanque, idregiao, campo, valor)
             resposta = {
                 "status": "aceito" if sucesso else "negado",
                 "mensagem": mensagem,
                 "campo": campo,
                 "valor": valor
             }
-            client.publish("atualizarStatusTanque/resultado", json.dumps(resposta))
+            publish_json("atualizarStatusTanque/resultado", resposta)
             print(f"[MQTT] Atualização de status do tanque enviada: {resposta}")
 
         elif topico == "buscarTanquesDisponiveis/entrada":
@@ -1075,7 +1168,7 @@ def on_message(client, userdata, msg):
                     "mensagem": "Nenhum tanque disponivel"
                 }
 
-            client.publish("buscarTanquesDisponiveis/resultado", json.dumps(resposta, default=str))
+            publish_json("buscarTanquesDisponiveis/resultado", resposta)
             print(f"[MQTT] Dados enviados para 'buscarTanquesDisponiveis/resultado': {resposta}")
         elif topico == "pegandoTanque/entrada":
           
@@ -1101,7 +1194,7 @@ def on_message(client, userdata, msg):
 
             except (TypeError, ValueError):
                 resposta = {"status": "negado", "mensagem": "IDs inválidos"}
-                client.publish("pegandoTanque/resultado", json.dumps(resposta))
+                publish_json("pegandoTanque/resultado", resposta)
                 print(f"[MQTT] pegandoTanque/resultado: {resposta}")
                 return
 
@@ -1112,7 +1205,7 @@ def on_message(client, userdata, msg):
             else:
                 resposta = {"status": "negado", "mensagem": out}
 
-            client.publish("pegandoTanque/resultado", json.dumps(resposta))
+            publish_json("pegandoTanque/resultado", resposta)
             print(f"[MQTT] pegandoTanque/resultado: {resposta}")
 
         elif topico == "buscarTanquesSelecionados/entrada":
@@ -1129,7 +1222,7 @@ def on_message(client, userdata, msg):
                     "mensagem": "Nenhum tanque selecionado"
                 }
 
-            client.publish("buscarTanquesSelecionados/resultado", json.dumps(resposta, default=str))
+            publish_json("buscarTanquesSelecionados/resultado", resposta)
             print(f"[MQTT] Dados enviados para 'buscarTanquesSelecionados/resultado': {resposta}")
 
     except Exception as e:
@@ -1140,15 +1233,18 @@ def on_message(client, userdata, msg):
 # Isso conecta no broker MQTT e fica escutando o tempo todo
 client = mqtt.Client()
 #arrumar
-# client.username_pw_set("csilab", "WhoAmI#2023")
-client.username_pw_set("admin", "admin")
+
+#colocar certo
+client.username_pw_set("csilab", "WhoAmI#2024")
+#client.username_pw_set("admin", "admin")
 client.on_message = on_message
 
 #arrumar
 # client.connect("192.168.244.220", 1883)
 
 #ip broker
-client.connect("192.168.12.103", 1883)
+#coolocar ip broker
+client.connect("192.168.66.11", 1883)
 
 client.subscribe("login/entrada")
 client.subscribe("cadastro/entrada")

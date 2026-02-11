@@ -1,7 +1,7 @@
-import 'dart:async'; // 👈 Timer
+import 'dart:async'; //  Timer
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart'; // 👈 ValueNotifier
+import 'package:flutter/foundation.dart'; //  ValueNotifier
 import 'package:app_smart_milk/components/tanque_dinamico_visual.dart';
 import 'package:app_smart_milk/pages/mqtt_service.dart';
 import 'package:app_smart_milk/components/navbar.dart';
@@ -19,7 +19,7 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
   final ValueNotifier<double> nivelNotifier = ValueNotifier<double>(0.0);
 
   // Métricas para a grade
-  List<String> dadosLeite = ['--', '--', '--', '--', '--', '--'];
+  List<String> dadosLeite = List.filled(9, '--');
 
   // Diagnóstico visual
   DateTime? _ultimaAtualizacao;
@@ -68,9 +68,12 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
             '${dados['ph']}',
             '${dados['temp']}°C',
             '${dados['amonia']}',
-            '${dados['carbono']}',
             '${dados['metano']}',
             '${dados['idregiao']}/${dados['idtanque']}',
+            '${dados['condutividade']}',
+            '${dados['turbidez']}',
+            '${dados['co2']}',
+            '${dados['status_tanque']}',
           ];
         });
       },
@@ -108,11 +111,17 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
       case 2:
         return 'Amônia';
       case 3:
-        return 'Carbono';
-      case 4:
         return 'Metano';
-      case 5:
+      case 4:
         return 'Região/Tanque';
+      case 5:
+        return 'Condutividade';
+      case 6:
+        return 'Turbidez';
+      case 7:
+        return 'CO2';
+      case 8:
+        return 'Status';
       default:
         return 'Dado ${index + 1}';
     }
@@ -184,7 +193,7 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
                     crossAxisCount: 3,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    children: List.generate(6, (index) {
+                    children: List.generate(dadosLeite.length, (index) {
                       return _DadoBox(
                         titulo: _rotuloDoDado(index),
                         valor: dadosLeite[index],
@@ -212,11 +221,14 @@ class _DadoBox extends StatelessWidget {
     if (s.contains('ph')) return Icons.science_outlined;
     if (s.contains('temperatura')) return Icons.thermostat_rounded;
     if (s.contains('amônia')) return Icons.bubble_chart_outlined;
-    if (s.contains('carbono')) return Icons.co2;
     if (s.contains('metano')) return Icons.cloud_queue_rounded;
     if (s.contains('região') || s.contains('tanque')) {
       return Icons.badge_outlined;
     }
+    if (s.contains('condutividade')) return Icons.electrical_services;
+    if (s.contains('turbidez')) return Icons.blur_on;
+    if (s.contains('co2')) return Icons.co2;
+    if (s.contains('status')) return Icons.info_outline;
     return Icons.analytics_outlined;
   }
 

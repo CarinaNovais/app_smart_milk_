@@ -2,10 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-// arrumar ip
-// const String servidorIP = '192.168.244.112'; // ipmeunotebook
-// const String servidorIP = '192.168.66.22'; // ipmeunotebook
-const String servidorIP = '192.168.12.100';
+//colocar ip notebook
+const String servidorIP = '192.168.66.67';
 const String servidorPorta = '5000';
 
 String get baseURL => 'http://$servidorIP:$servidorPorta';

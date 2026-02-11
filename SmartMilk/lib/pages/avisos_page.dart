@@ -10,7 +10,7 @@ import 'package:app_smart_milk/pages/mqtt_service.dart';
 // arrumar ip
 // const String servidorIP = '192.168.244.112'; //ip meu notebook
 
-const String servidorIP = '192.168.12.100'; //ip meu notebook
+const String servidorIP = '192.168.66.67'; //ip meu notebook colocar
 
 const String servidorPorta = '5000';
 String get kApiBaseUrl => 'http://$servidorIP:$servidorPorta';
@@ -52,21 +52,13 @@ class _AvisoSimplesPageState extends State<AvisoSimplesPage> {
 
   Future<void> _carregarPrefs() async {
     final prefs = await SharedPreferences.getInstance();
-
-    String? readAsString(String key) {
-      final dyn = prefs.get(key);
-      if (dyn is String) return dyn.trim().isEmpty ? null : dyn.trim();
-      if (dyn is int) return dyn.toString();
-      return null;
-    }
-
-    final idTanque = readAsString('idtanque');
-    final idRegiao = readAsString('idregiao');
+    final idTanque = prefs.getInt('idtanque');
+    final idRegiao = prefs.getInt('idregiao');
 
     if (!mounted) return;
     setState(() {
-      _idTanque = idTanque;
-      _idRegiao = idRegiao;
+      _idTanque = idTanque?.toString();
+      _idRegiao = idRegiao?.toString();
       _loading = false;
     });
   }
@@ -86,7 +78,15 @@ class _AvisoSimplesPageState extends State<AvisoSimplesPage> {
 
     final url =
         (_idTanque != null && _idRegiao != null)
-            ? '$kApiBaseUrl/aviso?idtanque=$_idTanque&idregiao=$_idRegiao'
+            ? Uri.parse('$kApiBaseUrl/aviso')
+                .replace(
+                  queryParameters: {
+                    'idtanque': _idTanque!,
+                    'idregiao': _idRegiao!,
+                    'ts': DateTime.now().millisecondsSinceEpoch.toString(),
+                  },
+                )
+                .toString()
             : null;
 
     return Container(

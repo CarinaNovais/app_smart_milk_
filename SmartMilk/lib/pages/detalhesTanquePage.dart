@@ -17,8 +17,10 @@ class DetalhesTanquePage extends StatefulWidget {
   final double temp;
   final double nivel;
   final double amonia;
-  final double carbono;
   final double metano;
+  final double condutividade;
+  final double turbidez;
+  final double co2;
 
   const DetalhesTanquePage({
     super.key,
@@ -29,8 +31,10 @@ class DetalhesTanquePage extends StatefulWidget {
     required this.temp,
     required this.nivel,
     required this.amonia,
-    required this.carbono,
     required this.metano,
+    required this.condutividade,
+    required this.turbidez,
+    required this.co2,
   });
 
   @override
@@ -63,8 +67,8 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
     setState(() => _isLoading = true);
 
     final prefs = await SharedPreferences.getInstance();
-    final coletor = prefs.getString('nome');
-    final placa = prefs.getString('placa');
+    final coletor = prefs.getString('nome') ?? '';
+    final placa = prefs.getString('placa') ?? '';
 
     final dados = {
       "nome": widget.nome,
@@ -74,10 +78,12 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
       "temperatura": widget.temp,
       "nivel": widget.nivel,
       "amonia": widget.amonia,
-      "carbono": widget.carbono,
       "metano": widget.metano,
       "coletor": coletor,
       "placa": placa,
+      "condutividade": widget.condutividade,
+      "turbidez": widget.turbidez,
+      "co2": widget.co2,
     };
 
     final mensagem = jsonEncode(dados);
@@ -108,6 +114,7 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
 
       final dados = {
         "idtanque": idtanque ?? widget.idTanque,
+        "idregiao": widget.idRegiao,
         "campo": campo,
         "valor": valor,
       };
@@ -263,8 +270,13 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
               _buildItem('Temperatura (°C)', widget.temp.toStringAsFixed(2)),
               _buildItem('Nível (L)', widget.nivel.toStringAsFixed(2)),
               _buildItem('Amônia (mg/L)', widget.amonia.toStringAsFixed(2)),
-              _buildItem('Carbono (mg/L)', widget.carbono.toStringAsFixed(2)),
               _buildItem('Metano (mg/L)', widget.metano.toStringAsFixed(2)),
+              _buildItem(
+                'Condutividade (mS/cm)',
+                widget.condutividade.toStringAsFixed(2),
+              ),
+              _buildItem('Turbidez (NTU)', widget.turbidez.toStringAsFixed(2)),
+              _buildItem('CO2 (mg/L)', widget.co2.toStringAsFixed(2)),
             ],
           ),
         ),
@@ -369,6 +381,12 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
     );
   }
 
+  /*************  ✨ Windsurf Command ⭐  *************/
+  /// Constrói um divisor horizontal com cor cinza e espessura de 8 dp.
+  /// O divisor é uma linha horizontal com cor cinza e altura de 1 dp.
+  /// O divisor é usado para separar os diferentes campos de informação
+  /// em uma lista de items.
+  /*******  1980a9e7-f2f1-4ff7-be27-ec5b6be3d556  *******/
   Widget _buildDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
