@@ -127,15 +127,15 @@ class MQTTService {
     client.keepAlivePeriod = 20;
 
     client.onConnected = () {
-      print('✅ Conectado ao broker MQTT');
+      print('Conectado ao broker MQTT');
     };
 
     client.onDisconnected = () {
-      print('🔴 Desconectado do broker MQTT');
+      print('Desconectado do broker MQTT');
     };
 
     client.onSubscribed = (topic) {
-      print('📡 Inscrito no tópico: $topic');
+      print('Inscrito no tópico: $topic');
     };
 
     try {
@@ -179,17 +179,17 @@ class MQTTService {
           MqttQos.atMostOnce,
         );
 
-        // ❗️cancela listener anterior e cria apenas UM
+        //cancela listener anterior e cria apenas UM
         await _updatesSub?.cancel();
         _updatesSub = client.updates?.listen(_onMessageReceived);
 
         _isInitialized = true;
       } else {
-        print('❌ Falha ao conectar ao broker: ${connectionStatus?.state}');
+        print('Falha ao conectar ao broker: ${connectionStatus?.state}');
         client.disconnect();
       }
     } catch (e) {
-      print('❌ Exceção ao conectar: $e');
+      print('Exceção ao conectar: $e');
       client.disconnect();
     } finally {
       _isConnecting = false;
@@ -202,20 +202,20 @@ class MQTTService {
     final payload = MqttPublishPayload.bytesToStringAsString(
       recMess.payload.message,
     );
-    print('📥 Mensagem MQTT recebida no tópico "$topic"');
-    print('💬 Conteúdo da mensagem: $payload');
+    print('Mensagem MQTT recebida no tópico "$topic"');
+    print('Conteúdo da mensagem: $payload');
     String preview = payload.length > 120 ? payload.substring(0, 120) : payload;
-    print('🧾 [MQTT] Payload recebido (início): $preview');
+    print('[MQTT] Payload recebido (início): $preview');
 
-    //print('🧾 [MQTT] Payload recebido (início): ${payload.substring(0, 120)}');
+    //print('[MQTT] Payload recebido (início): ${payload.substring(0, 120)}');
 
     try {
       final dados = jsonDecode(payload);
-      print('🔍 [MQTT] JSON decodificado: $dados');
+      print('[MQTT] JSON decodificado: $dados');
       if (dados is Map && dados['status'] != null) {
         if (topic == 'login/resultado') {
           if (dados['status'] == 'aceito') {
-            print('🔄 Recebendo token: ${dados['token']}');
+            print('Recebendo token: ${dados['token']}');
             final prefs = await SharedPreferences.getInstance();
             await prefs.setString('token', dados['token']);
             await prefs.setString('expira_em', dados['expira_em']);
@@ -239,7 +239,7 @@ class MQTTService {
                 await prefs.setString('placa', dados['placa'] ?? 'Sem Placa');
               }
             } else {
-              print('⚠️ Campo "cargo" ausente no JSON. Login parcial.');
+              print('Campo "cargo" ausente no JSON. Login parcial.');
               await prefs.setInt('cargo', -1);
             }
 
@@ -248,62 +248,62 @@ class MQTTService {
               fotoUsuarioNotifier.value = dados['foto'];
             }
 
-            print('✅ Token e dados do usuário salvos com sucesso.');
+            print('Token e dados do usuário salvos com sucesso.');
             onLoginAceito();
           } else {
-            print('❌ Login negado: ${dados['mensagem']}');
+            print('Login negado: ${dados['mensagem']}');
             onLoginNegado(dados['mensagem'] ?? 'Credenciais inválidas');
           }
         } else if (topic == 'cadastro/resultado') {
           if (dados['status'] == 'aceito') {
-            print('✅ Cadastro aceito!');
+            print('Cadastro aceito!');
             onCadastroAceito();
           } else {
-            print('❌ Cadastro negado!');
+            print('Cadastro negado!');
             onCadastroNegado(dados['mensagem'] ?? 'Erro ao cadastrar');
           }
         } else if (topic == 'tanque/resposta') {
           if (dados['status'] == 'ok') {
             onDadosTanque?.call(dados['dados']);
           } else {
-            print('❌ Erro ao buscar dados do tanque: ${dados['mensagem']}');
+            print('Erro ao buscar dados do tanque: ${dados['mensagem']}');
           }
         } else if (topic == 'fotoAtualizada/resultado') {
-          print('🖼️ Resultado da atualização de foto recebido!');
+          print('Resultado da atualização de foto recebido!');
           if (dados['status'] == 'aceito') {
-            print('✅ Foto Aceita');
+            print('Foto Aceita');
             onFotoEditada?.call();
           } else {
-            print('❌ Foto Negada');
+            print('Foto Negada');
             onErroFoto?.call(dados['mensagem'] ?? 'Erro');
           }
         } else if (topic == 'editarUsuario/resultado') {
           if (dados['status'] == 'aceito') {
-            print('✅ Campo atualizado com sucesso');
+            print('Campo atualizado com sucesso');
             final campo = dados['campo'] ?? '';
             final valor = dados['valor'] ?? '';
             if (campo.isNotEmpty && valor.isNotEmpty) {
               onCampoAtualizado(campo, valor);
             } else {
-              print('⚠️ Resposta de atualização sem campo ou valor.');
+              print('Resposta de atualização sem campo ou valor.');
             }
           } else {
-            print('❌ Falha ao atualizar campo: ${dados['mensagem']}');
+            print('Falha ao atualizar campo: ${dados['mensagem']}');
             // Ou onErroCampo?.call(dados['mensagem']);
           }
         } else if (topic == 'tanqueIdentificado/resultado') {
           if (dados['status'] == 'ok') {
-            print('📷 QR Code identificado com sucesso!');
+            print('QR Code identificado com sucesso!');
             //onTanqueIdentificado?.call(dados['dados']);
             onDadosTanque?.call(dados['dados']);
           } else {
-            print('❌ Falha ao identificar o QR Code: ${dados['mensagem']}');
+            print('Falha ao identificar o QR Code: ${dados['mensagem']}');
           }
         } else if (topic == 'cadastroHistoricoColeta/resultado') {
           if (dados['status'] == 'aceito') {
-            print('✅ coleta enviada');
+            print('coleta enviada');
           } else {
-            print('❌ coleta nao enviada!');
+            print('coleta nao enviada!');
           }
         } else if (topic == 'buscarColetas/resultado') {
           if (dados['status'] == 'ok') {
@@ -313,10 +313,10 @@ class MQTTService {
                   List<Map<String, dynamic>>.from(coletas);
               onBuscarColetas?.call(listaColetas);
             } else {
-              print('⚠️ "dados" não é uma lista.');
+              print('"dados" não é uma lista.');
             }
           } else {
-            print('❌ Erro: ${dados['mensagem']}');
+            print('Erro: ${dados['mensagem']}');
             onBuscarColetas?.call([]);
           }
         } else if (topic == 'buscarDepositosProdutor/resultado') {
@@ -327,21 +327,19 @@ class MQTTService {
                   List<Map<String, dynamic>>.from(depositos);
               onBuscarDepositosProdutor?.call(listaDepositos);
             } else {
-              print('⚠️ "dados" não é uma lista.');
+              print('"dados" não é uma lista.');
             }
           } else {
-            print(
-              '❌ Erro topico buscardepositosprodutor: ${dados['mensagem']}',
-            );
+            print('Erro topico buscardepositosprodutor: ${dados['mensagem']}');
             onBuscarDepositosProdutor?.call([]);
           }
         } else if (topic == 'cadastroVaca/resultado') {
           if (dados['status'] == 'aceito') {
-            print('✅ Cadastro aceito!');
+            print('Cadastro aceito!');
             // unawaited(buscarVacas());
             onCadastroVacaAceito();
           } else {
-            print('❌ Cadastro de Vaca negado!');
+            print('Cadastro de Vaca negado!');
             onCadastroVacaNegado(dados['mensagem'] ?? 'Erro ao cadastrar Vaca');
           }
         } else if (topic == 'buscarVacas/resultado') {
@@ -352,34 +350,34 @@ class MQTTService {
                   List<Map<String, dynamic>>.from(vacas);
               onBuscarVacas?.call(listaVacas);
             } else {
-              print('⚠️ "dados" não é uma lista.');
+              print('"dados" não é uma lista.');
               onBuscarVacas?.call(
                 [],
               ); // garante que callback é chamado mesmo com erro
             }
           } else {
-            print('❌ Erro topico buscarVacas/resultado: ${dados['mensagem']}');
+            print('Erro topico buscarVacas/resultado: ${dados['mensagem']}');
             onBuscarVacas?.call([]);
           }
         } else if (topic == 'editarVaca/resultado') {
           if (dados['status'] == 'aceito') {
-            print('✅ Campo atualizado com sucesso');
+            print('Campo atualizado com sucesso');
             final campo = dados['campo'] ?? '';
             final valor = dados['valor'] ?? '';
             if (campo.isNotEmpty && valor.isNotEmpty) {
               onCampoVacaAtualizado(campo, valor);
             } else {
-              print('⚠️ Resposta de atualização sem campo ou valor.');
+              print('Resposta de atualização sem campo ou valor.');
             }
           } else {
-            print('❌ Falha ao atualizar campo: ${dados['mensagem']}');
+            print('Falha ao atualizar campo: ${dados['mensagem']}');
           }
         } else if (topic == 'deletarVaca/resultado') {
           if (dados['status'] == 'aceito') {
-            print('✅ Vaca deletada com sucesso');
+            print('Vaca deletada com sucesso');
             onVacaDeletada();
           } else {
-            print('❌ Falha ao deletar vaca: ${dados['mensagem']}');
+            print('Falha ao deletar vaca: ${dados['mensagem']}');
           }
         } else if (topic == 'buscarDevolutivas/resultado') {
           if (dados['status'] == 'ok') {
@@ -389,11 +387,11 @@ class MQTTService {
                   List<Map<String, dynamic>>.from(devolutivas);
               onBuscarDevolutivas?.call(listaDevolutivas);
             } else {
-              print('⚠️ "dados" não é uma lista.');
+              print('"dados" não é uma lista.');
             }
           } else {
             print(
-              '❌ Erro topico buscarDevolutivas/resultado: ${dados['mensagem']}',
+              'Erro topico buscarDevolutivas/resultado: ${dados['mensagem']}',
             );
             onBuscarDevolutivas?.call([]);
           }
@@ -404,11 +402,9 @@ class MQTTService {
               dados['campo'],
               dados['valor'],
             );
-            print('✅ Status do tanque atualizado com sucesso');
+            print('Status do tanque atualizado com sucesso');
           } else {
-            print(
-              '❌ Falha ao atualizar status do tanque: ${dados['mensagem']}',
-            );
+            print('Falha ao atualizar status do tanque: ${dados['mensagem']}');
           }
         } else if (topic == 'buscarTanquesDisponiveis/resultado') {
           if (dados['status'] == 'ok') {
@@ -418,23 +414,23 @@ class MQTTService {
                   List<Map<String, dynamic>>.from(tanques);
               onBuscarTanquesDisponiveis?.call(listaTanques);
             } else {
-              print('⚠️ "dados" não é uma lista.');
+              print('"dados" não é uma lista.');
             }
           } else {
             print(
-              '❌ Erro topico buscarTanquesDisponiveis/resultado: ${dados['mensagem']}',
+              'Erro topico buscarTanquesDisponiveis/resultado: ${dados['mensagem']}',
             );
             onBuscarTanquesDisponiveis?.call([]);
           }
         } else if (topic == 'pegandoTanque/resultado') {
           final status = dados['status'];
           if (status == 'ok') {
-            print('✅ Coleta selecionada com sucesso');
+            print('Coleta selecionada com sucesso');
             onPegandoTanqueAceito?.call();
           } else {
             final msg =
                 dados['mensagem']?.toString() ?? 'Falha ao selecionar o tanque';
-            print('❌ $msg');
+            print(' $msg');
             onPegandoTanqueNegado?.call(msg);
           }
         } else if (topic == 'buscarTanquesSelecionados/resultado') {
@@ -445,20 +441,20 @@ class MQTTService {
                   List<Map<String, dynamic>>.from(tanques);
               onBuscarTanquesSelecionados?.call(listaTanques);
             } else {
-              print('⚠️ "dados" não é uma lista.');
+              print('"dados" não é uma lista.');
             }
           } else {
             print(
-              '❌ Erro topico buscarTanquesSelecionados/resultado: ${dados['mensagem']}',
+              'Erro topico buscarTanquesSelecionados/resultado: ${dados['mensagem']}',
             );
             onBuscarTanquesSelecionados?.call([]);
           }
         } else {
-          print('⚠️ Payload inesperado: $payload');
+          print('Payload inesperado: $payload');
         }
       }
     } catch (e) {
-      print('❌ Erro ao processar mensagem: $e');
+      print('Erro ao processar mensagem: $e');
     }
   }
 
@@ -589,21 +585,21 @@ class MQTTService {
     };
 
     if (cargo == 0) {
-      // 👨‍🌾 Produtor
+      // Produtor
       client.publishMessage(
         'tanque/buscar',
         MqttQos.atLeastOnce,
         MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
       );
     } else if (cargo == 2) {
-      // 🚛 Coletor
+      // Coletor
       client.publishMessage(
         'tanqueIdentificado/entrada',
         MqttQos.atLeastOnce,
         MqttClientPayloadBuilder().addString(jsonEncode(dados)).payload!,
       );
     } else {
-      print("⚠️ Cargo não reconhecido: $cargo");
+      print("Cargo não reconhecido: $cargo");
     }
   }
 
@@ -611,6 +607,6 @@ class MQTTService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     client.disconnect();
-    print('🔓 Sessão encerrada');
+    print('Sessão encerrada');
   }
 }

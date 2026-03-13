@@ -164,7 +164,7 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
 
         appBar: Navbar(
           title: 'QR Code • Dados do Tanque',
-          style: const TextStyle(fontSize: 20), // cor aplicada pela Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoute: '/homeColetor',
           showEndDrawerButton: true,
         ),
@@ -247,7 +247,7 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
         ),
         const SizedBox(height: 12),
 
-        // Card interno branco translúcido com os itens
+        // Card interno com os itens
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -381,12 +381,6 @@ class _DetalhesTanquePageState extends State<DetalhesTanquePage> {
     );
   }
 
-  /*************  ✨ Windsurf Command ⭐  *************/
-  /// Constrói um divisor horizontal com cor cinza e espessura de 8 dp.
-  /// O divisor é uma linha horizontal com cor cinza e altura de 1 dp.
-  /// O divisor é usado para separar os diferentes campos de informação
-  /// em uma lista de items.
-  /*******  1980a9e7-f2f1-4ff7-be27-ec5b6be3d556  *******/
   Widget _buildDivider() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),

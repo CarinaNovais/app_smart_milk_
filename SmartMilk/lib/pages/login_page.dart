@@ -61,7 +61,7 @@ class _LoginPageState extends State<LoginPage> {
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('⚠️ Token não encontrado. Tente novamente.'),
+              content: Text('Token não encontrado. Tente novamente.'),
             ),
           );
         }
@@ -240,7 +240,6 @@ class _LoginPageState extends State<LoginPage> {
 
                         const SizedBox(height: 18),
 
-                        // Social (mantive sua UI)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: const [
@@ -277,7 +276,6 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
-/// Card translúcido (glassmorphism)
 class _GlassCard extends StatelessWidget {
   final Widget child;
   const _GlassCard({required this.child});

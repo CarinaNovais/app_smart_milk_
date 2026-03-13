@@ -78,7 +78,7 @@ class _rotaTanquesSelecionadosPageState
 
         appBar: Navbar(
           title: 'Tanques Selecionados',
-          style: const TextStyle(fontSize: 20), // cor aplicada pela Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoute: '/homeColetor',
           showEndDrawerButton: true,
         ),

@@ -279,7 +279,7 @@ Future<LoginResultado> enviarLogin({
       body: body,
     );
 
-    // Adicione este bloco para tratar resposta vazia
+    //  tratar resposta vazia
     if (resposta.body.isEmpty) {
       return LoginResultado(
         sucesso: false,
@@ -327,8 +327,8 @@ Future<EnviarFotoResultado> enviarFoto({
       fotoBase64.length > 100 ? fotoBase64.substring(0, 100) : fotoBase64;
   print('🖼️ Foto base64 (início): $preview');
 
-  //print('🖼️ Foto base64 (início): ${fotoBase64.substring(0, 100)}');
-  //print('📦 Tamanho total da base64: ${fotoBase64.length} caracteres');
+  //print('Foto base64 (início): ${fotoBase64.substring(0, 100)}');
+  //print('Tamanho total da base64: ${fotoBase64.length} caracteres');
 
   try {
     final resposta = await http.post(
@@ -337,8 +337,8 @@ Future<EnviarFotoResultado> enviarFoto({
       body: body,
     );
 
-    print('✅ Resposta recebida com status: ${resposta.statusCode}');
-    print('💬 Corpo da resposta: ${resposta.body}');
+    print('Resposta recebida com status: ${resposta.statusCode}');
+    print('Corpo da resposta: ${resposta.body}');
 
     final dados = jsonDecode(resposta.body);
 
@@ -354,7 +354,7 @@ Future<EnviarFotoResultado> enviarFoto({
       );
     }
   } catch (e) {
-    print('❌ Exceção durante envio da foto: $e');
+    print('Exceção durante envio da foto: $e');
     return EnviarFotoResultado(
       sucesso: false,
       mensagem: "Erro ao conectar ao servidor.",

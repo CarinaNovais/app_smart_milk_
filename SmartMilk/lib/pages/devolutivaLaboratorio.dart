@@ -110,7 +110,7 @@ class _ListaDevolutivaLaboratorioPageState
 
         appBar: Navbar(
           title: 'Devolutivas do Laboratório',
-          style: const TextStyle(fontSize: 20), // cor tratada dentro da Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoute: '/homeProdutor',
           showEndDrawerButton: true,
         ),

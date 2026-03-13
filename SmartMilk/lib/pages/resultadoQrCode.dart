@@ -39,7 +39,7 @@ class ResultadoQrCodePage extends StatelessWidget {
 
         appBar: Navbar(
           title: 'Coleta Enviada',
-          style: const TextStyle(fontSize: 20), // cor aplicada pela Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoute: '/homeColetor',
           showEndDrawerButton: true,
         ),

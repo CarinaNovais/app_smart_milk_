@@ -70,7 +70,7 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
           }
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("✅ $campo atualizado com sucesso")),
+          SnackBar(content: Text("$campo atualizado com sucesso")),
         );
       },
       onVacaDeletada: () {
@@ -96,7 +96,7 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     final usuario_id = prefs.getInt('id');
     if (usuario_id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ Dados do usuário ausentes")),
+        const SnackBar(content: Text("Dados do usuário ausentes")),
       );
       return;
     }
@@ -105,7 +105,7 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     if (vacaId == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("⚠️ ID da vaca ausente")));
+      ).showSnackBar(const SnackBar(content: Text("ID da vaca ausente")));
       return;
     }
 
@@ -132,7 +132,7 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     final usuario_id = prefs.getInt('id');
     if (usuario_id == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("⚠️ Dados do usuário ausentes")),
+        const SnackBar(content: Text("Dados do usuário ausentes")),
       );
       return;
     }
@@ -141,7 +141,7 @@ class _EditarVacaPageState extends State<EditarVacaPage> {
     if (vacaId == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("⚠️ ID da vaca ausente")));
+      ).showSnackBar(const SnackBar(content: Text("ID da vaca ausente")));
       return;
     }
 

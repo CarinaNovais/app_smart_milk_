@@ -115,7 +115,6 @@ class _ListaColetasPageState extends State<ListaColetasPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Título com ícone (sem emoji)
                               Row(
                                 children: [
                                   Icon(

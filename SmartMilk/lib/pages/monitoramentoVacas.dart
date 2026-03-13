@@ -49,7 +49,7 @@ class monitoramentoVacasPage extends StatelessWidget {
 
         appBar: Navbar(
           title: 'Monitoramento das Vacas',
-          style: const TextStyle(fontSize: 20), // cor é da Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoute: '/homeProdutor',
           showEndDrawerButton: true,
         ),

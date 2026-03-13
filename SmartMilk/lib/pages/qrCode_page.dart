@@ -135,8 +135,7 @@ class _QRViewExampleState extends State<QRViewExample> {
         appBar: Navbar(
           title: 'Scanner QR',
           style: const TextStyle(fontSize: 20),
-          backPageRoute:
-              '/homeColetor', // ajuste se quiser voltar para outra rota
+          backPageRoute: '/homeColetor',
           showEndDrawerButton: true,
         ),
         endDrawer: MenuDrawer(mqtt: mqtt),
@@ -175,7 +174,7 @@ class _QRViewExampleState extends State<QRViewExample> {
                 ),
               ),
 
-              // Caixa glass inferior com status e botões
+              // Caixa inferior com status e botões
               Align(
                 alignment: Alignment.bottomCenter,
                 child: ClipRRect(

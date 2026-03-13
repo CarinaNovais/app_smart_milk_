@@ -81,7 +81,7 @@ class _ListaDepositosProdutorPageState
         extendBody: true,
         appBar: Navbar(
           title: 'Depósitos',
-          style: const TextStyle(fontSize: 20), // cor já é aplicada pela Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoute: '/homeProdutor',
           showEndDrawerButton: true,
         ),

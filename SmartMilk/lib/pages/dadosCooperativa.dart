@@ -42,7 +42,7 @@ class _SobreCooperRitaPageState extends State<DadoscooperativaPage> {
         extendBody: true,
         appBar: Navbar(
           title: 'Sobre Cooperativa',
-          style: const TextStyle(fontSize: 20), // cor aplicada pela Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoutePorCargo: {0: '/homeProdutor', 2: '/homeColetor'},
           backPageRoute: '/homeDefault',
           showEndDrawerButton: true,
@@ -94,7 +94,7 @@ class _SobreCooperRitaPageState extends State<DadoscooperativaPage> {
 
               const SizedBox(height: 14),
 
-              // ÁREAS DE ATUAÇÃO (chips)
+              // ÁREAS DE ATUAÇÃO
               _GlassCard(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -181,9 +181,7 @@ class _SobreCooperRitaPageState extends State<DadoscooperativaPage> {
               // CTA
               Center(
                 child: ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: abrir site/app/rota específica
-                  },
+                  onPressed: () {},
                   icon: const Icon(Icons.open_in_new_rounded),
                   label: const Text('Saiba mais'),
                   style: ElevatedButton.styleFrom(
@@ -211,7 +209,7 @@ class _SobreCooperRitaPageState extends State<DadoscooperativaPage> {
   }
 }
 
-/// Card translúcido (glassmorphism) usado nas sessões
+/// Card translúcido
 class _GlassCard extends StatelessWidget {
   final Widget child;
   const _GlassCard({required this.child});

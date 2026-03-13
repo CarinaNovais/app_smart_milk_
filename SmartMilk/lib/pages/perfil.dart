@@ -66,13 +66,13 @@ class _PerfilPage extends State<PerfilPage> {
         }
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('✅ Foto atualizada com sucesso!')),
+          const SnackBar(content: Text('Foto atualizada com sucesso!')),
         );
       },
 
       onErroFoto: (erro) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('❌ Erro ao atualizar foto: $erro')),
+          SnackBar(content: Text(' Erro ao atualizar foto: $erro')),
         );
       },
       onCadastroVacaAceito: () {},
@@ -105,7 +105,7 @@ class _PerfilPage extends State<PerfilPage> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile == null) {
-      print('⚠️ Nenhuma imagem selecionada.');
+      print('Nenhuma imagem selecionada.');
       return;
     }
 
@@ -154,9 +154,9 @@ class _PerfilPage extends State<PerfilPage> {
           binarioImagem!.length > 100
               ? binarioImagem!.substring(0, 100)
               : binarioImagem!;
-      print("🧪 Foto base64 (início): $preview");
+      print("Foto base64 (início): $preview");
     }
-    print('🖼️ Imagem convertida para base64!');
+    print('Imagem convertida para base64!');
 
     final nome = prefs.getString('nome');
     final id = prefs.getInt('id');
@@ -178,14 +178,14 @@ class _PerfilPage extends State<PerfilPage> {
     }
 
     if (nome == null || id == null || binarioImagem == null) {
-      print("⚠️ Dados ausentes para envio da imagem.");
+      print("Dados ausentes para envio da imagem.");
       return;
     }
 
     final dados = {"foto": binarioImagem, "nome": nome, "id": id};
     final mensagem = jsonEncode(dados);
     final buffer = Uint8Buffer()..addAll(utf8.encode(mensagem));
-    print("📤 Enviando mensagem MQTT com dados: $mensagem");
+    print("Enviando mensagem MQTT com dados: $mensagem");
 
     mqtt.client.publishMessage(
       'fotoAtualizada/entrada',
@@ -288,7 +288,7 @@ class _PerfilPage extends State<PerfilPage> {
 
         const SizedBox(height: 12),
 
-        // Nome (off-white)
+        // Nome
         Text(
           nomeUsuario.isEmpty ? 'Usuário' : nomeUsuario,
           style: TextStyle(
@@ -378,16 +378,14 @@ class _PerfilPage extends State<PerfilPage> {
     );
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: gradient,
-      ), // gradiente FORA do Scaffold
+      decoration: BoxDecoration(gradient: gradient),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
 
         appBar: Navbar(
           title: 'Perfil',
-          style: const TextStyle(fontSize: 20), // cor é aplicada na Navbar
+          style: const TextStyle(fontSize: 20),
           backPageRoutePorCargo: {0: '/homeProdutor', 2: '/homeColetor'},
           backPageRoute: '/homeDefault',
           showEndDrawerButton: true,
@@ -400,7 +398,7 @@ class _PerfilPage extends State<PerfilPage> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             child: Column(
               children: [
-                // card de perfil (glass)
+                // card de perfil
                 _GlassCard(
                   child: Column(
                     children: [
@@ -414,7 +412,7 @@ class _PerfilPage extends State<PerfilPage> {
                       if (cargo == 2) _perfilColetor(),
                       if (cargo != 0 && cargo != 2)
                         const Text(
-                          "⚠️ Cargo não reconhecido.",
+                          "Cargo não reconhecido.",
                           style: TextStyle(color: Colors.white),
                         ),
                     ],

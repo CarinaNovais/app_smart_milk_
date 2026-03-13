@@ -79,7 +79,7 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     setState(() {
       nomeUsuario = prefs.getString('nome') ?? 'Produtor';
     });
-    // Atualiza o notifier para refletir no MenuDrawer
+
     nomeUsuarioNotifier.value = nomeUsuario;
   }
 
@@ -105,13 +105,13 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
     );
 
     return Container(
-      decoration: BoxDecoration(gradient: gradient), // gradiente fora
+      decoration: BoxDecoration(gradient: gradient),
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: true,
         appBar: Navbar(
           title: 'Página Inicial',
-          style: const TextStyle(fontSize: 20), // cor é aplicada pela Navbar
+          style: const TextStyle(fontSize: 20),
           showEndDrawerButton: true,
           showBackButton: false,
         ),
@@ -120,7 +120,6 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
         body: SafeArea(
           child: Stack(
             children: [
-              // Blobs de fundo (sutil)
               Positioned(
                 top: -60,
                 left: -30,
@@ -151,34 +150,8 @@ class _HomeProdutorPageState extends State<HomeProdutorPage> {
                   // Cabeçalho com saudação
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      //children: [
-                      //Text(
-                      //   'Olá, $nomeUsuario 👋',
-                      //   style: TextStyle(
-                      //     fontSize: 20,
-                      //     fontWeight: FontWeight.w800,
-                      //     color:
-                      //         isDark ? Colors.white : const Color(0xFF0F172A),
-                      //     letterSpacing: -0.2,
-                      //   ),
-                      // ),
-                      //   const SizedBox(height: 6),
-                      //   Opacity(
-                      //     opacity: 0.85,
-                      //     child: Text(
-                      //       'O que você quer fazer hoje?',
-                      //       style: TextStyle(
-                      //         color: isDark ? Colors.white : Colors.black87,
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ],
-                    ),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start),
                   ),
-
-                  // Grid dentro de um “glass card” leve
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),

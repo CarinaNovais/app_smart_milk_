@@ -110,7 +110,6 @@ class IndexPage extends StatelessWidget {
 
                         const SizedBox(height: 22),
 
-                        // botões com seu MyButton (Cupertino-based)
                         MyButton(
                           onTap: () => _acaoBotaoProdutor(context),
                           text: 'Entrar como Produtor',

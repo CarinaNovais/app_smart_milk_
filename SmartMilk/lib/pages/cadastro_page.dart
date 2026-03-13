@@ -242,7 +242,7 @@ class _CadastroPageState extends State<CadastroPage> {
   }
 }
 
-/// Card translúcido (glassmorphism) para o formulário
+/// Card translúcido
 class _GlassCard extends StatelessWidget {
   final Widget child;
   const _GlassCard({required this.child});

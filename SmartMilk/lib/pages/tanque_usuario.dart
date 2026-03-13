@@ -52,8 +52,6 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
           'payload=$dados',
         );
 
-        // ⚠️ ValueNotifier NÃO emite se valor novo == antigo.
-        // Então vamos garantir repaint:
         if (nivelNotifier.value == normalizado) {
           // força notificação mesmo sem mudança
           nivelNotifier.notifyListeners();
@@ -87,7 +85,7 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
     mqtt.inicializar().then((_) {
       // Primeira busca
       mqtt.buscarDadosTanque();
-      // 🔁 Polling leve: continue pedindo dados periodicamente
+      // continua pedindo dados periodicamente
       _pollTimer?.cancel();
       _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
         if (mounted) mqtt.buscarDadosTanque();
@@ -180,10 +178,7 @@ class _DadosTanquePageState extends State<DadosTanquePage> {
                 const SizedBox(height: 32),
 
                 // Tanque visual reativo
-                TanqueVisual(
-                  nivel: 0.0, // ignorado quando passar o listenable
-                  nivelListenable: nivelNotifier,
-                ),
+                TanqueVisual(nivel: 0.0, nivelListenable: nivelNotifier),
 
                 const SizedBox(height: 24),
 
