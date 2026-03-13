@@ -45,7 +45,6 @@ class _MenuDrawerState extends State<MenuDrawer> {
       fotoUsuarioNotifier.value = fotoBase64;
     }
     cargoUsuario = cargo;
-    // (mantive sem setState para não alterar sua lógica; os ValueListenables atualizam a UI)
   }
 
   @override
@@ -236,7 +235,7 @@ class _MenuDrawerState extends State<MenuDrawer> {
   }
 }
 
-/// Item estilizado do Drawer (vidro leve + ícone off-white)
+/// Item estilizado do Drawer
 class _DrawerItem extends StatelessWidget {
   final IconData icon;
   final String label;

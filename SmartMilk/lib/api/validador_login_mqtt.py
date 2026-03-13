@@ -365,7 +365,7 @@ def buscarColetas(nome):
 
         cursor.execute(query, (nome,))
         resultado = cursor.fetchall()
-        print(f"🔎 {len(resultado)} resultados encontrados.")
+        print(f"{len(resultado)} resultados encontrados.")
 
         return resultado if resultado else None
     except Exception as erro:
@@ -396,7 +396,7 @@ def formatar_coletas(dados, nome):
 
 def buscarDepositosProdutor(usuario_id):
     try:
-        print("🔍 id_usuario recebido para busca:", usuario_id)
+        print("id_usuario recebido para busca:", usuario_id)
 
         conn = conectar_banco()
         cursor = conn.cursor()
@@ -425,7 +425,7 @@ ORDER BY hdp.dataDeposito DESC
 
         cursor.execute(query, (usuario_id,))
         resultado = cursor.fetchall()
-        print(f"🔎 {len(resultado)} resultados encontrados.")
+        print(f"{len(resultado)} resultados encontrados.")
 
         return resultado if resultado else None
     except Exception as erro:
@@ -492,7 +492,7 @@ def buscarDevolutivas(idtanque):
 
         cursor.execute(query, (idtanque,))
         resultado = cursor.fetchall()
-        print(f"🔎 {len(resultado)} resultados encontrados.")
+        print(f"{len(resultado)} resultados encontrados.")
         conn.close()
         return resultado if resultado else None
     except Exception as erro:
@@ -518,7 +518,7 @@ def buscarVacas(usuario_id):
         query = """SELECT * FROM vacas WHERE usuario_id = %s"""
         cursor.execute(query, (usuario_id,))
         resultado = cursor.fetchall()
-        print(f"🔎 {len(resultado)} resultados encontrados.")
+        print(f"{len(resultado)} resultados encontrados.")
 
         return resultado if resultado else None
     except Exception as erro:
@@ -548,7 +548,7 @@ def buscarTanquesDisponiveis(idregiao):
         """
         cursor.execute(query, (idregiao,))
         resultado = cursor.fetchall()
-        print(f"🔎 {len(resultado)} resultados encontrados.")
+        print(f"{len(resultado)} resultados encontrados.")
 
         return resultado if resultado else None
     except Exception as erro:
@@ -702,7 +702,7 @@ SELECT
           AND t.status_tanque = 'a_ser_coletado'"""
         cursor.execute(query, (coletor_id,))
         resultado = cursor.fetchall()
-        print(f"🔎 {len(resultado)} resultados encontrados.")
+        print(f"{len(resultado)} resultados encontrados.")
 
         return resultado if resultado else None
     except Exception as erro:
@@ -759,7 +759,7 @@ def on_message(client, userdata, msg):
             cargo_escolhido = payload.get("cargo")
 
             resultado = verificar_login(nome, senha, cargo_escolhido)
-            print("🔍 Resultado do login:", resultado) 
+            print("Resultado do login:", resultado) 
 
             #  credenciais inválidas
             if resultado is None:
@@ -769,7 +769,7 @@ def on_message(client, userdata, msg):
                 }
                 publish_json("login/resultado", resposta)
                 return
-            # ⏳ cadastro ainda não aprovado pelo admin
+            # cadastro ainda não aprovado pelo admin
             if resultado == "PENDENTE":
                 resposta = {
                     "status": "negado",
@@ -897,8 +897,8 @@ def on_message(client, userdata, msg):
             print(f"[MQTT] Dados do tanque enviados para 'tanque/resposta': {resposta}")
         
         elif topico == "fotoAtualizada/entrada":
-            print(f"📨 Payload recebido: {payload}")
-            print(f"📷 Base64 (início): {payload.get('foto', '')[:100]}")
+            print(f"Payload recebido: {payload}")
+            print(f"Base64 (início): {payload.get('foto', '')[:100]}")
             
             nome = payload.get("nome")
             idusuario = payload.get("id")
@@ -911,7 +911,7 @@ def on_message(client, userdata, msg):
 
             try:
                 foto_bytes = base64.b64decode(foto_base64, validate=True)
-                print(f"🧪 Imagem decodificada com {len(foto_bytes)} bytes")
+                print(f"Imagem decodificada com {len(foto_bytes)} bytes")
 
                 if len(foto_bytes) > 16_777_215:  # limite mediumblob 16MB
                     resposta = {"status": "negado", "mensagem": "Imagem excede o limite de 16MB"}
@@ -932,7 +932,7 @@ def on_message(client, userdata, msg):
                 resposta = {"status": "negado", "mensagem": "Erro ao decodificar ou atualizar foto"}
             
             publish_json("fotoAtualizada/resultado", resposta)
-            print(f"📤 Resposta enviada ao app: {resposta}")
+            print(f"Resposta enviada ao app: {resposta}")
 
 
         elif topico == "editarUsuario/entrada":
@@ -967,7 +967,7 @@ def on_message(client, userdata, msg):
             print(f"[MQTT] Resultado histórico enviado: {resposta}")
           
         elif topico == "tanqueIdentificado/entrada":  # qrcode
-            print("✅ Mensagem recebida no tópico tanqueIdentificado/entrada")
+            print("Mensagem recebida no tópico tanqueIdentificado/entrada")
             nome = payload.get("nome")
             idregiao = payload.get("idregiao")
             idtanque = payload.get("idtanque")
@@ -1010,7 +1010,7 @@ def on_message(client, userdata, msg):
             publish_json("tanqueIdentificado/resultado", resposta)
 
         elif topico == "buscarColetas/entrada":
-            print("✅ Mensagem recebida no tópico buscarColetas/entrada")
+            print("Mensagem recebida no tópico buscarColetas/entrada")
             nome = payload.get("nome")
 
             dados = buscarColetas(nome)
@@ -1030,7 +1030,7 @@ def on_message(client, userdata, msg):
             print(f"[MQTT] Dados enviados para 'buscarColetas/resultado': {resposta}")
         
         elif topico == "buscarDepositosProdutor/entrada":
-            print("✅ Mensagem recebida no tópico buscarDepositosProdutor/entrada")
+            print("Mensagem recebida no tópico buscarDepositosProdutor/entrada")
             usuario_id = payload.get("usuario_id")
             dados = buscarDepositosProdutor(usuario_id)
 
@@ -1073,7 +1073,7 @@ def on_message(client, userdata, msg):
             print(f"[MQTT] Resultado CADASTRO VACA enviado: {resposta}")
 
         elif topico == "buscarVacas/entrada":
-            print("✅ Mensagem recebida no tópico buscarVacas/entrada")
+            print("Mensagem recebida no tópico buscarVacas/entrada")
             usuario_id = payload.get("usuario_id")
 
             dados = buscarVacas(usuario_id)
@@ -1226,7 +1226,7 @@ def on_message(client, userdata, msg):
             print(f"[MQTT] Dados enviados para 'buscarTanquesSelecionados/resultado': {resposta}")
 
     except Exception as e:
-        print("❌ Erro ao processar mensagem:", e)
+        print("Erro ao processar mensagem:", e)
 
 
 # Configurando MQTT
@@ -1267,5 +1267,5 @@ client.subscribe("buscarTanquesDisponiveis/entrada")
 client.subscribe("pegandoTanque/entrada")
 client.subscribe("buscarTanquesSelecionados/entrada")
 
-print("🟢 Validador MQTT com sessão JWT rodando...")
+print("Validador MQTT com sessão JWT rodando...")
 client.loop_forever()

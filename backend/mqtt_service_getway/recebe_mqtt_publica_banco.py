@@ -124,8 +124,6 @@ def on_message(client, userdata, msg):
     data = parse_payload(payload)
     values = {f: to_float(data.get(f)) for f in FIELDS}
 
-    # se não veio nada aproveitável, ainda assim podemos atualizar só o status
-    # (se quiser NÃO atualizar status quando não houver leitura, me avisa)
     conn = None
     cur = None
     try:

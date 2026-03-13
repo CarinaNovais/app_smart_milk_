@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Azul da sua marca (se quiser, ajuste aqui)
 const Color appBlue = Color(0xFF0097B2);
 
 class Navbar extends StatelessWidget implements PreferredSizeWidget {
@@ -31,7 +30,6 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Off-white para ícones/título (combina com seus inputs)
     final Color fg = const Color(0xff219ebc).withOpacity(0.9);
 
     return AppBar(
@@ -40,18 +38,14 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: Colors.transparent, // sem fundo sólido
       surfaceTintColor: Colors.transparent, // M3 sem “tinta”
       centerTitle: true,
-      automaticallyImplyLeading: false, // controlamos manualmente
+      automaticallyImplyLeading: false,
       systemOverlayStyle:
           isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
 
       // Título
-      title: Text(
-        title,
-        // usa o seu style, mas garante cor off-white se não vier definida
-        style: style.copyWith(color: style.color ?? fg),
-      ),
+      title: Text(title, style: style.copyWith(color: style.color ?? fg)),
 
-      // Botão de voltar (com a sua lógica completa)
+      // Botão de voltar
       leading:
           showBackButton
               ? IconButton(
@@ -64,7 +58,6 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                     if (cargo != null &&
                         backPageRoutePorCargo!.containsKey(cargo)) {
                       // substitui a rota atual
-                      // ignore: use_build_context_synchronously
                       Navigator.pushReplacementNamed(
                         context,
                         backPageRoutePorCargo![cargo]!,
@@ -73,11 +66,10 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
                     }
                   }
                   if (backPageRoute != null) {
-                    // ignore: use_build_context_synchronously
                     Navigator.pushReplacementNamed(context, backPageRoute!);
                     return;
                   }
-                  // ignore: use_build_context_synchronously
+
                   Navigator.pop(context);
                 },
               )
@@ -108,15 +100,13 @@ class Navbar extends StatelessWidget implements PreferredSizeWidget {
           ),
       ],
 
-      // Glassmorphism: blur + leve brilho translúcido seguindo o gradiente do app
       flexibleSpace: ClipRRect(
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: Container(
             decoration: BoxDecoration(
-              // um véu translúcido (quase invisível) p/ dar “vidro”
               color: Colors.white.withOpacity(isDark ? 0.06 : 0.10),
-              // sem borda/linha!
+              // sem borda/linha
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,

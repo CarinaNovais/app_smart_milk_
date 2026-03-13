@@ -184,7 +184,7 @@ class _AvisoSimplesPageState extends State<AvisoSimplesPage> {
   }
 }
 
-/// Card translúcido (glassmorphism) reutilizável
+/// Card translúcido
 class _GlassCard extends StatelessWidget {
   final Widget child;
   const _GlassCard({required this.child});

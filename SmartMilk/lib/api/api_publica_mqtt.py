@@ -128,7 +128,7 @@ def fotoAtualizada():
         try:
             imagem_bytes = base64.b64decode(foto_base64)
         except Exception as erro_decodificacao:
-            print(f"❌ Erro ao decodificar imagem: {erro_decodificacao}")
+            print(f"Erro ao decodificar imagem: {erro_decodificacao}")
             return jsonify({"status": "negado", "mensagem": "Erro ao processar imagem"}), 400
 
         publish.single(
@@ -186,7 +186,7 @@ def deletar_vaca():
     usuario_id= dados.get("usuario_id")
     vaca_id = dados.get("vaca_id")
 
-    print("📥 Dados recebidos:", dados)
+    print("Dados recebidos:", dados)
     
     if vaca_id is None or usuario_id is None:
         return jsonify({"erro": "Faltam dados obrigatórios"}), 400
@@ -231,11 +231,11 @@ def qrCode():
                 'password': MQTT_PASSWORD
             }
         )
-        print(f"✅ QR Code publicado no tópico MQTT: tanque/identificado -> {dados}")
+        print(f"QR Code publicado no tópico MQTT: tanque/identificado -> {dados}")
         return jsonify({"status": "QR Code publicado com sucesso"}), 200
 
     except Exception as e:
-        print(f"❌ Erro ao publicar MQTT: {e}")
+        print(f"Erro ao publicar MQTT: {e}")
         return jsonify({"erro": "Erro ao publicar no MQTT"}), 500
 
 @app.route('/cadastroHistoricoColeta', methods=['POST'])
@@ -265,7 +265,7 @@ def historico_coleta():
 
         return jsonify({"status": "coleta publicada"}), 200
     except Exception as e:
-        print(f"❌ Erro ao publicar coleta: {e}")
+        print(f"Erro ao publicar coleta: {e}")
         return jsonify({"erro": "Erro ao publicar a coleta"}), 500
     
 @app.route('/cadastroVaca', methods=['POST'])
@@ -303,7 +303,7 @@ def editar_vaca():
     campo = dados.get("campo")     # exemplo: "senha"
     valor = dados.get("valor")     # novo valor para o campo
 
-    print("📥 Dados recebidos:", dados)
+    print("Dados recebidos:", dados)
     
     if not campo or valor is None or usuario_id is None or vaca_id is None:
         return jsonify({"erro": "Faltam dados obrigatórios"}), 400

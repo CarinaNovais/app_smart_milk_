@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 class TanqueVisual extends StatelessWidget {
-  /// Nível normalizado entre 0.0 e 1.0 quando usado em modo “estático”.
+  /// Nível entre 0.0 e 1.0
   final double nivel;
 
   /// Fonte reativa opcional do nível. Se informado, o widget ignora [nivel]
@@ -20,7 +20,7 @@ class TanqueVisual extends StatelessWidget {
   const TanqueVisual({
     super.key,
     required this.nivel,
-    this.nivelListenable, // <-- NOVO (opcional)
+    this.nivelListenable,
     this.width = 120,
     this.height = 240,
     this.showPercent = true,
@@ -28,19 +28,17 @@ class TanqueVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Se veio um ValueListenable, usamos ele para rebuildar automaticamente.
     if (nivelListenable != null) {
       return ValueListenableBuilder<double>(
         valueListenable: nivelListenable!,
         builder: (context, value, _) {
-          final clamped = value.clamp(0.0, 1.0).toDouble(); // 👈 cast
+          final clamped = value.clamp(0.0, 1.0).toDouble();
           return _buildWithNivel(context, clamped);
         },
       );
     }
 
-    // Comportamento antigo: usa o 'nivel' passado por parâmetro.
-    final clamped = nivel.clamp(0.0, 1.0).toDouble(); // 👈 cast
+    final clamped = nivel.clamp(0.0, 1.0).toDouble();
     return _buildWithNivel(context, clamped);
   }
 

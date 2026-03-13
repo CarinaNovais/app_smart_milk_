@@ -16,7 +16,7 @@ class MyButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 25),
         borderRadius: BorderRadius.circular(12),
         color: const Color(0xFF004aad), // cor principal
-        pressedOpacity: 0.85, // efeito ao pressionar (iOS vibe)
+        pressedOpacity: 0.85, // efeito ao pressionar
         child: Text(
           text,
           style: const TextStyle(
